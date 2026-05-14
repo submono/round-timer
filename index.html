@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Professional Boxing Round Timer</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --panel: #18181b;
+      --panel-2: #27272a;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --red: #ef4444;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --yellow: #facc15;
+      --orange: #fb923c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: radial-gradient(circle at top, #27272a, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .app {
+      width: min(1400px, 100%);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.45fr 0.75fr;
+      gap: 20px;
+    }
+
+    .timer-card, .settings-card, .history-card {
+      background: rgba(24, 24, 27, 0.95);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 28px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.42);
+      padding: 24px;
+    }
+
+    .timer-card {
+      min-height: 720px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .sponsor-strip {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .sponsor-strip img {
+      max-height: 58px;
+      max-width: 220px;
+      object-fit: contain;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 4.5rem);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.8vw, 1.6rem);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .corners {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+      margin: 22px 0;
+    }
+
+    .corner {
+      border-radius: 24px;
+      padding: 18px;
+      min-height: 116px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .red-corner { background: linear-gradient(135deg, rgba(239,68,68,.95), rgba(127,29,29,.9)); }
+    .blue-corner { background: linear-gradient(135deg, rgba(59,130,246,.95), rgba(30,58,138,.9)); }
+
+    .corner-label {
+      font-size: 0.85rem;
+      opacity: 0.82;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      margin-bottom: 8px;
+    }
+
+    .fighter-name {
+      font-size: clamp(1.6rem, 3vw, 3rem);
+      font-weight: 900;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .vs {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .status {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: clamp(1.1rem, 2vw, 2rem);
+    }
+
+    .time {
+      font-size: clamp(6rem, 16vw, 15.5rem);
+      font-weight: 950;
+      line-height: 0.86;
+      margin: 20px 0 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .state-round { box-shadow: 0 0 100px rgba(239,68,68,0.26); }
+    .state-rest { box-shadow: 0 0 100px rgba(34,197,94,0.22); }
+    .state-prep { box-shadow: 0 0 100px rgba(59,130,246,0.22); }
+    .state-finished { box-shadow: 0 0 120px rgba(250,204,21,0.28); }
+    .state-warning { animation: pulse 0.7s infinite alternate; }
+
+    @keyframes pulse {
+      from { filter: brightness(1); }
+      to { filter: brightness(1.28); }
+    }
+
+    .round-info {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .info-box {
+      background: rgba(39,39,42,.9);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .info-label {
+      color: var(--muted);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      margin-bottom: 7px;
+    }
+
+    .info-value {
+      font-size: 1.55rem;
+      font-weight: 900;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 15px;
+      padding: 14px 18px;
+      font-size: .96rem;
+      font-weight: 850;
+      cursor: pointer;
+      color: white;
+      background: #3f3f46;
+      transition: transform .1s ease, opacity .15s ease;
+    }
+
+    button:hover { opacity: .9; }
+    button:active { transform: scale(.97); }
+    .start { background: var(--green); color: #052e16; }
+    .pause { background: var(--yellow); color: #422006; }
+    .reset { background: var(--red); }
+    .secondary { background: #52525b; }
+    .orange { background: var(--orange); color: #431407; }
+
+    .side-column {
+      display: grid;
+      gap: 20px;
+    }
+
+    .settings-card h2, .history-card h2 {
+      margin: 0 0 18px;
+      font-size: 1.45rem;
+    }
+
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .preset-row button { padding: 10px; font-size: .82rem; background: #334155; }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field-full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: .76rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.1);
+      background: #101014;
+      color: var(--text);
+      border-radius: 13px;
+      padding: 12px;
+      font-size: .98rem;
+    }
+
+    input[type="range"] { padding: 8px; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .checkbox-row input { width: auto; }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .button-row button { width: 100%; }
+
+    .history-list {
+      display: grid;
+      gap: 8px;
+      max-height: 210px;
+      overflow: auto;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      background: #101014;
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: .92rem;
+    }
+
+    .note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: .86rem;
+      line-height: 1.45;
+    }
+
+    .overlay-mode .side-column,
+    .display-mode .side-column,
+    .display-mode .controls {
+      display: none;
+    }
+
+    body.overlay-mode,
+    body.display-mode {
+      padding: 0;
+      background: transparent;
+    }
+
+    .overlay-mode .app,
+    .display-mode .app {
+      width: 100vw;
+      max-width: none;
+      min-height: 100vh;
+      grid-template-columns: 1fr;
+    }
+
+    .overlay-mode .timer-card,
+    .display-mode .timer-card {
+      border-radius: 0;
+      min-height: 100vh;
+      border: 0;
+    }
+
+    .overlay-mode .timer-card {
+      background: rgba(0,0,0,.45);
+      box-shadow: none;
+    }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .timer-card { min-height: auto; }
+      .settings-grid, .round-info { grid-template-columns: 1fr 1fr; }
+      .corners { grid-template-columns: 1fr; }
+      .vs { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 10px; }
+      .timer-card, .settings-card, .history-card { padding: 16px; border-radius: 20px; }
+      .settings-grid, .round-info, .preset-row, .button-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="timer-card state-prep" id="timerCard">
+      <div>
+        <div class="sponsor-strip" id="sponsorStrip">Main Sponsor</div>
+        <h1 id="eventTitle">Fight Night</h1>
+        <div class="subtitle" id="boutTitle">Main Event</div>
+
+        <div class="corners">
+          <div class="corner red-corner">
+            <div class="corner-label">Red Corner</div>
+            <div class="fighter-name" id="redNameDisplay">Red Fighter</div>
+          </div>
+          <div class="vs">VS</div>
+          <div class="corner blue-corner">
+            <div class="corner-label">Blue Corner</div>
+            <div class="fighter-name" id="blueNameDisplay">Blue Fighter</div>
+          </div>
+        </div>
+
+        <div class="status" id="statusText">Ready</div>
+        <div class="time" id="timeDisplay">00:10</div>
+
+        <div class="round-info">
+          <div class="info-box">
+            <div class="info-label">Round</div>
+            <div class="info-value"><span id="currentRound">1</span>/<span id="totalRoundsDisplay">12</span></div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">Next</div>
+            <div class="info-value" id="nextPhase">Round 1</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">Mode</div>
+            <div class="info-value" id="modeDisplay">Stopped</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">Clock</div>
+            <div class="info-value" id="clockDisplay">--:--</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="start" id="startBtn">Start</button>
+        <button class="pause" id="pauseBtn">Pause</button>
+        <button class="secondary" id="skipBtn">Skip Phase</button>
+        <button class="reset" id="resetBtn">Reset</button>
+        <button class="secondary" id="displayBtn">Display Mode</button>
+        <button class="secondary" id="overlayBtn">OBS Overlay</button>
+        <button class="secondary" id="fullscreenBtn">Fullscreen</button>
+      </div>
+    </section>
+
+    <aside class="side-column">
+      <section class="settings-card">
+        <h2>Event Settings</h2>
+
+        <div class="preset-row">
+          <button data-preset="pro">Pro</button>
+          <button data-preset="amateur">Amateur</button>
+          <button data-preset="training">Training</button>
+        </div>
+
+        <div class="settings-grid">
+          <div class="field-full">
+            <label for="titleInput">Event title</label>
+            <input id="titleInput" value="Fight Night" />
+          </div>
+
+          <div class="field-full">
+            <label for="boutInput">Bout title / division</label>
+            <input id="boutInput" value="Main Event" />
+          </div>
+
+          <div>
+            <label for="redInput">Red corner</label>
+            <input id="redInput" value="Red Fighter" />
+          </div>
+
+          <div>
+            <label for="blueInput">Blue corner</label>
+            <input id="blueInput" value="Blue Fighter" />
+          </div>
+
+          <div class="field-full">
+            <label for="sponsorInput">Sponsor text</label>
+            <input id="sponsorInput" value="Main Sponsor" />
+          </div>
+
+          <div class="field-full">
+            <label for="logoInput">Sponsor logo</label>
+            <input id="logoInput" type="file" accept="image/*" />
+          </div>
+
+          <div>
+            <label for="roundsInput">Rounds</label>
+            <input id="roundsInput" type="number" min="1" max="50" value="12" />
+          </div>
+
+          <div>
+            <label for="roundTimeInput">Round length</label>
+            <input id="roundTimeInput" type="text" value="3:00" />
+          </div>
+
+          <div>
+            <label for="restTimeInput">Rest length</label>
+            <input id="restTimeInput" type="text" value="1:00" />
+          </div>
+
+          <div>
+            <label for="prepTimeInput">Prep countdown</label>
+            <input id="prepTimeInput" type="text" value="0:10" />
+          </div>
+
+          <div>
+            <label for="warningInput">Warning sound</label>
+            <input id="warningInput" type="text" value="0:10" />
+          </div>
+
+          <div>
+            <label for="volumeInput">Volume</label>
+            <input id="volumeInput" type="range" min="0" max="1" step="0.01" value="0.9" />
+          </div>
+        </div>
+
+        <label class="checkbox-row">
+          <input id="autoStartRounds" type="checkbox" checked />
+          Automatically continue between rounds
+        </label>
+
+        <label class="checkbox-row">
+          <input id="showCorners" type="checkbox" checked />
+          Show fighter names / corners
+        </label>
+
+        <div class="button-row">
+          <button class="orange" id="testStartBellBtn">Test Start Bell</button>
+          <button class="orange" id="testEndBellBtn">Test End Bell</button>
+        </div>
+
+        <p class="note">
+          Audio files should sit beside this HTML file and be named <strong>bell 1.wav</strong> and <strong>bell 3.wav</strong>. Bell 1 plays at the start of each round. Bell 3 plays at the end of each round and at the end of the fight.
+        </p>
+      </section>
+
+      <section class="history-card">
+        <h2>Round History</h2>
+        <div class="history-list" id="historyList"></div>
+        <p class="note">
+          Keyboard: Space = start/pause, R = reset, S = skip phase, B = start bell, E = end bell. OBS Overlay mode uses a transparent page background.
+        </p>
+      </section>
+    </aside>
+  </main>
+
+  <audio id="startBell" src="bell 1.wav" preload="auto"></audio>
+  <audio id="endBell" src="bell 3.wav" preload="auto"></audio>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const state = {
+      running: false,
+      phase: 'prep',
+      round: 1,
+      timeLeft: 10,
+      interval: null,
+      warningPlayed: false,
+      history: [],
+      audioCtx: null,
+      logoUrl: null
+    };
+
+    const inputs = {
+      title: $('titleInput'),
+      bout: $('boutInput'),
+      red: $('redInput'),
+      blue: $('blueInput'),
+      sponsor: $('sponsorInput'),
+      logo: $('logoInput'),
+      rounds: $('roundsInput'),
+      roundTime: $('roundTimeInput'),
+      restTime: $('restTimeInput'),
+      prepTime: $('prepTimeInput'),
+      warning: $('warningInput'),
+      volume: $('volumeInput'),
+      autoStartRounds: $('autoStartRounds'),
+      showCorners: $('showCorners')
+    };
+
+    function parseTime(value) {
+      const raw = String(value).trim();
+      if (!raw) return 0;
+      if (raw.includes(':')) {
+        const parts = raw.split(':').map(Number);
+        if (parts.length === 3) return Math.max(0, (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0));
+        return Math.max(0, (parts[0] || 0) * 60 + (parts[1] || 0));
+      }
+      const num = Number(raw);
+      if (Number.isNaN(num)) return 0;
+      return num < 20 ? num * 60 : num;
+    }
+
+    function formatTime(seconds) {
+      seconds = Math.max(0, Math.ceil(seconds));
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function settings() {
+      return {
+        title: inputs.title.value || 'Fight Night',
+        bout: inputs.bout.value || 'Main Event',
+        red: inputs.red.value || 'Red Fighter',
+        blue: inputs.blue.value || 'Blue Fighter',
+        sponsor: inputs.sponsor.value || '',
+        rounds: Math.max(1, Number(inputs.rounds.value) || 1),
+        roundTime: parseTime(inputs.roundTime.value),
+        restTime: parseTime(inputs.restTime.value),
+        prepTime: parseTime(inputs.prepTime.value),
+        warning: parseTime(inputs.warning.value),
+        volume: Number(inputs.volume.value),
+        autoStartRounds: inputs.autoStartRounds.checked,
+        showCorners: inputs.showCorners.checked
+      };
+    }
+
+    function ensureAudio() {
+      if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+    }
+
+    function playAudioElement(id) {
+      ensureAudio();
+      const audio = $(id);
+      audio.volume = settings().volume;
+      audio.currentTime = 0;
+      return audio.play().catch(() => false);
+    }
+
+    function fallbackTone(freq, duration, type = 'sine', delay = 0) {
+      ensureAudio();
+      const ctx = state.audioCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(settings().volume, ctx.currentTime + delay + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + duration + 0.04);
+    }
+
+    function playStartBell() {
+      playAudioElement('startBell').then((played) => {
+        if (played === false) fallbackTone(880, .35, 'sine');
+      });
+    }
+
+    function playEndBell() {
+      playAudioElement('endBell').then((played) => {
+        if (played === false) {
+          fallbackTone(880, .25, 'triangle', 0);
+          fallbackTone(880, .25, 'triangle', .38);
+          fallbackTone(880, .25, 'triangle', .76);
+        }
+      });
+    }
+
+    function playWarning() {
+      fallbackTone(660, .12, 'square');
+      fallbackTone(660, .12, 'square', .18);
+    }
+
+    function addHistory(text) {
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      state.history.unshift({ text, now });
+      state.history = state.history.slice(0, 24);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      $('historyList').innerHTML = state.history.map(item => `
+        <div class="history-item"><span>${item.text}</span><strong>${item.now}</strong></div>
+      `).join('') || '<div class="history-item"><span>No rounds completed yet</span><strong>--</strong></div>';
+    }
+
+    function setPhase(phase, seconds) {
+      state.phase = phase;
+      state.timeLeft = seconds;
+      state.warningPlayed = false;
+      render();
+    }
+
+    function resetTimer() {
+      clearInterval(state.interval);
+      state.running = false;
+      state.round = 1;
+      state.history = [];
+      setPhase('prep', settings().prepTime);
+      renderHistory();
+    }
+
+    function startTimer() {
+      ensureAudio();
+      if (state.running) return;
+      state.running = true;
+      if (state.timeLeft <= 0) resetTimer();
+      render();
+      state.interval = setInterval(tick, 1000);
+    }
+
+    function pauseTimer() {
+      state.running = false;
+      clearInterval(state.interval);
+      render();
+    }
+
+    function tick() {
+      const cfg = settings();
+      state.timeLeft -= 1;
+
+      if (state.phase === 'round' && cfg.warning > 0 && state.timeLeft === cfg.warning && !state.warningPlayed) {
+        state.warningPlayed = true;
+        playWarning();
+      }
+
+      if (state.timeLeft <= 0) nextPhase(true);
+      render();
+    }
+
+    function nextPhase(fromTimer = false) {
+      const cfg = settings();
+
+      if (state.phase === 'prep') {
+        state.round = 1;
+        setPhase('round', cfg.roundTime);
+        addHistory(`Round ${state.round} started`);
+        playStartBell();
+        return;
+      }
+
+      if (state.phase === 'round') {
+        addHistory(`Round ${state.round} ended`);
+        playEndBell();
+
+        if (state.round >= cfg.rounds) {
+          setPhase('finished', 0);
+          pauseTimer();
+          addHistory('Fight complete');
+          return;
+        }
+
+        setPhase('rest', cfg.restTime);
+        return;
+      }
+
+      if (state.phase === 'rest') {
+        state.round += 1;
+        setPhase('round', cfg.roundTime);
+        addHistory(`Round ${state.round} started`);
+        playStartBell();
+        if (!cfg.autoStartRounds && fromTimer) pauseTimer();
+        return;
+      }
+
+      if (state.phase === 'finished') resetTimer();
+    }
+
+    function render() {
+      const cfg = settings();
+      $('eventTitle').textContent = cfg.title;
+      $('boutTitle').textContent = cfg.bout;
+      $('redNameDisplay').textContent = cfg.red;
+      $('blueNameDisplay').textContent = cfg.blue;
+      $('timeDisplay').textContent = formatTime(state.timeLeft);
+      $('currentRound').textContent = state.round;
+      $('totalRoundsDisplay').textContent = cfg.rounds;
+      $('modeDisplay').textContent = state.running ? 'Running' : 'Stopped';
+      $('clockDisplay').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      document.querySelector('.corners').style.display = cfg.showCorners ? 'grid' : 'none';
+
+      if (state.logoUrl) {
+        $('sponsorStrip').innerHTML = `<img src="${state.logoUrl}" alt="Sponsor logo">`;
+      } else {
+        $('sponsorStrip').textContent = cfg.sponsor;
+      }
+
+      const card = $('timerCard');
+      card.className = 'timer-card';
+
+      let status = 'Ready';
+      let next = 'Round 1';
+
+      if (state.phase === 'prep') {
+        status = 'Get Ready';
+        next = 'Round 1';
+        card.classList.add('state-prep');
+      } else if (state.phase === 'round') {
+        status = `Round ${state.round}`;
+        next = state.round >= cfg.rounds ? 'Finish' : 'Rest';
+        card.classList.add('state-round');
+        if (state.timeLeft <= cfg.warning && cfg.warning > 0) card.classList.add('state-warning');
+      } else if (state.phase === 'rest') {
+        status = 'Rest';
+        next = `Round ${state.round + 1}`;
+        card.classList.add('state-rest');
+      } else if (state.phase === 'finished') {
+        status = 'Fight Complete';
+        next = 'Reset';
+        card.classList.add('state-finished');
+      }
+
+      $('statusText').textContent = status;
+      $('nextPhase').textContent = next;
+      $('startBtn').textContent = state.running ? 'Running' : 'Start';
+    }
+
+    function applyPreset(type) {
+      if (type === 'pro') {
+        inputs.rounds.value = 12;
+        inputs.roundTime.value = '3:00';
+        inputs.restTime.value = '1:00';
+        inputs.prepTime.value = '0:10';
+        inputs.warning.value = '0:10';
+      }
+      if (type === 'amateur') {
+        inputs.rounds.value = 3;
+        inputs.roundTime.value = '3:00';
+        inputs.restTime.value = '1:00';
+        inputs.prepTime.value = '0:10';
+        inputs.warning.value = '0:10';
+      }
+      if (type === 'training') {
+        inputs.rounds.value = 5;
+        inputs.roundTime.value = '2:00';
+        inputs.restTime.value = '1:00';
+        inputs.prepTime.value = '0:05';
+        inputs.warning.value = '0:10';
+      }
+      resetTimer();
+    }
+
+    $('startBtn').addEventListener('click', startTimer);
+    $('pauseBtn').addEventListener('click', pauseTimer);
+    $('resetBtn').addEventListener('click', resetTimer);
+    $('skipBtn').addEventListener('click', () => nextPhase(false));
+    $('testStartBellBtn').addEventListener('click', playStartBell);
+    $('testEndBellBtn').addEventListener('click', playEndBell);
+
+    $('displayBtn').addEventListener('click', () => {
+      document.body.classList.remove('overlay-mode');
+      document.body.classList.toggle('display-mode');
+    });
+
+    $('overlayBtn').addEventListener('click', () => {
+      document.body.classList.remove('display-mode');
+      document.body.classList.toggle('overlay-mode');
+    });
+
+    $('fullscreenBtn').addEventListener('click', async () => {
+      if (!document.fullscreenElement) {
+        try { await document.documentElement.requestFullscreen(); } catch (e) {}
+      } else {
+        try { await document.exitFullscreen(); } catch (e) {}
+      }
+    });
+
+    inputs.logo.addEventListener('change', () => {
+      const file = inputs.logo.files[0];
+      if (!file) return;
+      if (state.logoUrl) URL.revokeObjectURL(state.logoUrl);
+      state.logoUrl = URL.createObjectURL(file);
+      render();
+    });
+
+    document.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+    });
+
+    Object.values(inputs).forEach(input => {
+      input.addEventListener('input', () => {
+        if (input === inputs.logo) return;
+        if (!state.running) resetTimer();
+        else render();
+      });
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        state.running ? pauseTimer() : startTimer();
+      }
+      if (e.key.toLowerCase() === 'r') resetTimer();
+      if (e.key.toLowerCase() === 's') nextPhase(false);
+      if (e.key.toLowerCase() === 'b') playStartBell();
+      if (e.key.toLowerCase() === 'e') playEndBell();
+    });
+
+    setInterval(render, 1000);
+    resetTimer();
+  </script>
+</body>
+</html>
