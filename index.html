@@ -563,6 +563,7 @@
       </div>
 
       <div class="controls">
+        <button class="orange" id="walkoutBtn">Ring Walk</button>
         <button class="start" id="startBtn">Start</button>
         <button class="pause" id="pauseBtn">Pause</button>
         <button class="secondary" id="skipBtn">Skip Phase</button>
@@ -636,6 +637,11 @@
           </div>
 
           <div>
+            <label for="walkoutInput">Ring walk timer</label>
+            <input id="walkoutInput" type="text" value="1:00" />
+          </div>
+
+          <div>
             <label for="warningInput">Warning sound</label>
             <input id="warningInput" type="text" value="0:10" />
           </div>
@@ -645,6 +651,16 @@
             <input id="volumeInput" type="range" min="0" max="1" step="0.01" value="0.9" />
           </div>
         </div>
+
+        <label class="checkbox-row">
+          <input id="usePrep" type="checkbox" checked />
+          Use prep countdown
+        </label>
+
+        <label class="checkbox-row">
+          <input id="useRest" type="checkbox" checked />
+          Use rest between rounds
+        </label>
 
         <label class="checkbox-row">
           <input id="autoStartRounds" type="checkbox" checked />
@@ -671,6 +687,7 @@
         <div class="button-row">
           <button class="start" id="saveFightBtn">Save Current Fight</button>
           <button class="secondary" id="clearFightsBtn">Clear List</button>
+          <button class="orange" id="nextFightBtn">Load Next Fight</button>
         </div>
         <div class="fight-list" id="fightList"></div>
         <p class="note">
@@ -721,8 +738,11 @@
       roundTime: $('roundTimeInput'),
       restTime: $('restTimeInput'),
       prepTime: $('prepTimeInput'),
+      walkout: $('walkoutInput'),
       warning: $('warningInput'),
       volume: $('volumeInput'),
+      usePrep: $('usePrep'),
+      useRest: $('useRest'),
       autoStartRounds: $('autoStartRounds'),
       showCorners: $('showCorners')
     };
@@ -758,8 +778,11 @@
         roundTime: parseTime(inputs.roundTime.value),
         restTime: parseTime(inputs.restTime.value),
         prepTime: parseTime(inputs.prepTime.value),
+        walkoutTime: parseTime(inputs.walkout.value),
         warning: parseTime(inputs.warning.value),
         volume: Number(inputs.volume.value),
+        usePrep: inputs.usePrep.checked,
+        useRest: inputs.useRest.checked,
         autoStartRounds: inputs.autoStartRounds.checked,
         showCorners: inputs.showCorners.checked
       };
@@ -827,7 +850,10 @@
         roundTime: inputs.roundTime.value,
         restTime: inputs.restTime.value,
         prepTime: inputs.prepTime.value,
+        walkoutTime: inputs.walkout.value,
         warning: inputs.warning.value,
+        usePrep: cfg.usePrep,
+        useRest: cfg.useRest,
         autoStartRounds: cfg.autoStartRounds,
         showCorners: cfg.showCorners
       };
@@ -844,7 +870,10 @@
       inputs.roundTime.value = fight.roundTime || '3:00';
       inputs.restTime.value = fight.restTime || '1:00';
       inputs.prepTime.value = fight.prepTime || '0:10';
+      inputs.walkout.value = fight.walkoutTime || '1:00';
       inputs.warning.value = fight.warning || '0:10';
+      inputs.usePrep.checked = fight.usePrep !== false;
+      inputs.useRest.checked = fight.useRest !== false;
       inputs.autoStartRounds.checked = fight.autoStartRounds !== false;
       inputs.showCorners.checked = fight.showCorners !== false;
       resetTimer();
@@ -883,7 +912,7 @@
         <div class="fight-item">
           <div class="fight-meta">
             <strong>${index + 1}. ${fight.red || 'Red'} vs ${fight.blue || 'Blue'}</strong>
-            <span>${fight.bout || 'Bout'} · ${fight.rounds || 1} x ${fight.roundTime || '3:00'} · Rest ${fight.restTime || '1:00'}</span>
+            <span>${fight.bout || 'Bout'} · ${fight.rounds || 1} x ${fight.roundTime || '3:00'} · ${fight.useRest === false ? 'No rest' : 'Rest ' + (fight.restTime || '1:00')}</span>
           </div>
           <div class="fight-actions">
             <button class="start" data-load-fight="${fight.id}">Load</button>
@@ -933,7 +962,17 @@
       state.running = false;
       state.round = 1;
       state.history = [];
-      setPhase('prep', settings().prepTime);
+
+      const cfg = settings();
+
+      if (cfg.usePrep && cfg.prepTime > 0) {
+        setPhase('prep', cfg.prepTime);
+      } else {
+        setPhase('round', cfg.roundTime);
+        addHistory(`Round ${state.round} started`);
+        playStartBell();
+      }
+
       renderHistory();
     }
 
@@ -965,6 +1004,26 @@
       render();
     }
 
+    function startWalkout() {
+      pauseTimer();
+      state.phase = 'walkout';
+      state.timeLeft = settings().walkoutTime;
+      state.running = true;
+      addHistory('Ring walk started');
+      render();
+      clearInterval(state.interval);
+      state.interval = setInterval(tick, 1000);
+    }
+
+    function loadNextFight() {
+      if (!state.fights.length) return;
+      const current = `${inputs.red.value}|${inputs.blue.value}|${inputs.bout.value}`;
+      let idx = state.fights.findIndex(f => `${f.red}|${f.blue}|${f.bout}` === current);
+      idx = idx < 0 ? 0 : (idx + 1) % state.fights.length;
+      applyFightData(state.fights[idx]);
+      addHistory('Next fight loaded');
+    }
+
     function nextPhase(fromTimer = false) {
       const cfg = settings();
 
@@ -987,7 +1046,14 @@
           return;
         }
 
-        setPhase('rest', cfg.restTime);
+        if (cfg.useRest && cfg.restTime > 0) {
+          setPhase('rest', cfg.restTime);
+        } else {
+          state.round += 1;
+          setPhase('round', cfg.roundTime);
+          addHistory(`Round ${state.round} started`);
+          playStartBell();
+        }
         return;
       }
 
@@ -1000,7 +1066,17 @@
         return;
       }
 
-      if (state.phase === 'finished') resetTimer();
+      if (state.phase === 'walkout') {
+        setPhase('round', settings().roundTime);
+        addHistory(`Round ${state.round} started`);
+        playStartBell();
+        return;
+      }
+
+      if (state.phase === 'finished') {
+        loadNextFight();
+        resetTimer();
+      }
     }
 
     function broadcastState() {
@@ -1137,6 +1213,14 @@
     $('skipBtn').addEventListener('click', () => nextPhase(false));
     $('testStartBellBtn').addEventListener('click', playStartBell);
     $('testEndBellBtn').addEventListener('click', playEndBell);
+    $('walkoutBtn').addEventListener('click', () => {
+      startWalkout();
+      $('walkoutBtn').blur();
+    });
+    $('nextFightBtn').addEventListener('click', () => {
+      loadNextFight();
+      $('nextFightBtn').blur();
+    });
     $('saveFightBtn').addEventListener('click', () => {
       saveCurrentFight();
       $('saveFightBtn').blur();
