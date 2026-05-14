@@ -978,7 +978,10 @@
       ensureAudio();
       if (state.running) return;
 
-      if (state.phase === 'round' && state.round === 1 && state.timeLeft === settings().roundTime) {
+      if (
+        state.phase === 'round' &&
+        state.timeLeft === settings().roundTime
+      ) {
         playStartBell();
       }
 
