@@ -563,7 +563,7 @@
       </div>
 
       <div class="controls">
-        <button class="orange" id="walkoutBtn">Ring Walk</button>
+        <button class="secondary" id="scoreWindowBtn">Open Scoring Window</button>
         <button class="start" id="startBtn">Start</button>
         <button class="pause" id="pauseBtn">Pause</button>
         <button class="secondary" id="skipBtn">Skip Phase</button>
@@ -637,11 +637,6 @@
           </div>
 
           <div>
-            <label for="walkoutInput">Ring walk timer</label>
-            <input id="walkoutInput" type="text" value="1:00" />
-          </div>
-
-          <div>
             <label for="warningInput">Warning sound</label>
             <input id="warningInput" type="text" value="0:10" />
           </div>
@@ -691,7 +686,7 @@
         </div>
         <div class="fight-list" id="fightList"></div>
         <p class="note">
-          Prepare each bout in the settings above, then save it here. Loading a saved fight resets the timer to that fight’s settings.
+          Prepare each bout in the settings above, then save it here. Fights will auto-load in sequence after completion. Use the scoring window for judges and stream graphics in the output display.
         </p>
       </section>
 
@@ -713,6 +708,7 @@
 
     const params = new URLSearchParams(window.location.search);
     const isOutputWindow = params.get('output') === '1';
+    const isScoreWindow = params.get('scores') === '1';
 
     const state = {
       running: false,
@@ -738,8 +734,7 @@
       roundTime: $('roundTimeInput'),
       restTime: $('restTimeInput'),
       prepTime: $('prepTimeInput'),
-      walkout: $('walkoutInput'),
-      warning: $('warningInput'),
+            warning: $('warningInput'),
       volume: $('volumeInput'),
       usePrep: $('usePrep'),
       useRest: $('useRest'),
@@ -778,8 +773,7 @@
         roundTime: parseTime(inputs.roundTime.value),
         restTime: parseTime(inputs.restTime.value),
         prepTime: parseTime(inputs.prepTime.value),
-        walkoutTime: parseTime(inputs.walkout.value),
-        warning: parseTime(inputs.warning.value),
+                warning: parseTime(inputs.warning.value),
         volume: Number(inputs.volume.value),
         usePrep: inputs.usePrep.checked,
         useRest: inputs.useRest.checked,
@@ -857,8 +851,7 @@
         roundTime: inputs.roundTime.value,
         restTime: inputs.restTime.value,
         prepTime: inputs.prepTime.value,
-        walkoutTime: inputs.walkout.value,
-        warning: inputs.warning.value,
+                warning: inputs.warning.value,
         usePrep: cfg.usePrep,
         useRest: cfg.useRest,
         autoStartRounds: cfg.autoStartRounds,
@@ -877,8 +870,7 @@
       inputs.roundTime.value = fight.roundTime || '3:00';
       inputs.restTime.value = fight.restTime || '1:00';
       inputs.prepTime.value = fight.prepTime || '0:10';
-      inputs.walkout.value = fight.walkoutTime || '1:00';
-      inputs.warning.value = fight.warning || '0:10';
+            inputs.warning.value = fight.warning || '0:10';
       inputs.usePrep.checked = fight.usePrep !== false;
       inputs.useRest.checked = fight.useRest !== false;
       inputs.autoStartRounds.checked = fight.autoStartRounds !== false;
@@ -1015,17 +1007,6 @@
       render();
     }
 
-    function startWalkout() {
-      pauseTimer();
-      state.phase = 'walkout';
-      state.timeLeft = settings().walkoutTime;
-      state.running = true;
-      addHistory('Ring walk started');
-      render();
-      clearInterval(state.interval);
-      state.interval = setInterval(tick, 1000);
-    }
-
     function loadNextFight() {
       if (!state.fights.length) return;
       const current = `${inputs.red.value}|${inputs.blue.value}|${inputs.bout.value}`;
@@ -1077,14 +1058,16 @@
         return;
       }
 
-      if (state.phase === 'walkout') {
-        setPhase('round', settings().roundTime);
-        addHistory(`Round ${state.round} started`);
-        playStartBell();
-        return;
+      if (state.phase === 'finished') {
+        loadNextFight();
+        resetTimer();
+        if (state.fights.length) {
+          setTimeout(() => startTimer(), 800);
+        }
       }
 
-      if (state.phase === 'finished') {
+      if (state.phase === 'finished_placeholder') {
+
         loadNextFight();
         resetTimer();
       }
@@ -1127,6 +1110,16 @@
       render();
     }
 
+    function setupScoreWindow() {
+      if (!isScoreWindow) return;
+      document.body.classList.add('display-mode');
+      document.title = 'Judges Scoring Window';
+      document.querySelector('.controls').style.display = 'none';
+      document.querySelector('.side-column').style.display = 'none';
+      document.getElementById('statusText').textContent = 'Judges View';
+      document.getElementById('nextPhase').textContent = 'Unofficial Scoring';
+    }
+
     function setupOutputWindow() {
       if (!isOutputWindow) return;
       document.body.classList.add('display-mode');
@@ -1154,12 +1147,15 @@
 
       document.querySelector('.corners').style.display = cfg.showCorners ? 'grid' : 'none';
 
+      const sponsorRotation = ['Main Sponsor', 'Sponsored By', 'Championship Bout'];
+      const sponsorText = sponsorRotation[Math.floor(Date.now() / 8000) % sponsorRotation.length];
+
       if (state.logoUrl) {
         $('sponsorStrip').innerHTML = `<img src="${state.logoUrl}" alt="Sponsor logo">`;
         $('bottomMedia').innerHTML = `<img src="${state.logoUrl}" alt="Sponsor logo">`;
       } else {
-        $('sponsorStrip').textContent = cfg.sponsor;
-        $('bottomMedia').textContent = cfg.sponsor;
+        $('sponsorStrip').textContent = cfg.sponsor || sponsorText;
+        $('bottomMedia').textContent = cfg.sponsor || sponsorText;
       }
 
       const card = $('timerCard');
@@ -1232,10 +1228,12 @@
       playEndBell();
       $('testEndBellBtn').blur();
     });
-    $('walkoutBtn').addEventListener('click', () => {
-      startWalkout();
-      $('walkoutBtn').blur();
+        $('scoreWindowBtn').addEventListener('click', () => {
+      const scoreUrl = `${window.location.pathname}?scores=1`;
+      window.open(scoreUrl, 'boxingScoreWindow');
+      $('scoreWindowBtn').blur();
     });
+
     $('nextFightBtn').addEventListener('click', () => {
       loadNextFight();
       $('nextFightBtn').blur();
@@ -1330,6 +1328,7 @@
       broadcastState();
     }, 1000);
 
+    setupScoreWindow();
     setupOutputWindow();
 
     if (!isOutputWindow) {
