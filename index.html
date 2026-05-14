@@ -215,7 +215,7 @@
       gap: 20px;
     }
 
-    .settings-card h2, .history-card h2 {
+    .settings-card h2, .history-card h2, .fight-list-card h2 {
       margin: 0 0 18px;
       font-size: 1.45rem;
     }
@@ -278,22 +278,46 @@
 
     .button-row button { width: 100%; }
 
-    .history-list {
+    .history-list, .fight-list {
       display: grid;
       gap: 8px;
-      max-height: 210px;
+      max-height: 260px;
       overflow: auto;
     }
 
-    .history-item {
+    .history-item, .fight-item {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       gap: 12px;
       background: #101014;
       border-radius: 12px;
       padding: 10px 12px;
       color: var(--muted);
       font-size: .92rem;
+    }
+
+    .fight-meta {
+      display: grid;
+      gap: 3px;
+      text-align: left;
+    }
+
+    .fight-meta strong {
+      color: var(--text);
+      font-size: .98rem;
+    }
+
+    .fight-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .fight-actions button {
+      padding: 8px 10px;
+      font-size: .78rem;
+      border-radius: 10px;
     }
 
     .note {
@@ -496,6 +520,18 @@
         </p>
       </section>
 
+      <section class="fight-list-card history-card">
+        <h2>Prepared Fights</h2>
+        <div class="button-row">
+          <button class="start" id="saveFightBtn">Save Current Fight</button>
+          <button class="secondary" id="clearFightsBtn">Clear List</button>
+        </div>
+        <div class="fight-list" id="fightList"></div>
+        <p class="note">
+          Prepare each bout in the settings above, then save it here. Loading a saved fight resets the timer to that fight’s settings.
+        </p>
+      </section>
+
       <section class="history-card">
         <h2>Round History</h2>
         <div class="history-list" id="historyList"></div>
@@ -520,6 +556,7 @@
       interval: null,
       warningPlayed: false,
       history: [],
+      fights: JSON.parse(localStorage.getItem('boxingPreparedFights') || '[]'),
       audioCtx: null,
       logoUrl: null
     };
@@ -627,6 +664,99 @@
     function playWarning() {
       fallbackTone(660, .12, 'square');
       fallbackTone(660, .12, 'square', .18);
+    }
+
+    function currentFightData() {
+      const cfg = settings();
+      return {
+        title: cfg.title,
+        bout: cfg.bout,
+        red: cfg.red,
+        blue: cfg.blue,
+        sponsor: cfg.sponsor,
+        rounds: cfg.rounds,
+        roundTime: inputs.roundTime.value,
+        restTime: inputs.restTime.value,
+        prepTime: inputs.prepTime.value,
+        warning: inputs.warning.value,
+        autoStartRounds: cfg.autoStartRounds,
+        showCorners: cfg.showCorners
+      };
+    }
+
+    function applyFightData(fight) {
+      pauseTimer();
+      inputs.title.value = fight.title || 'Fight Night';
+      inputs.bout.value = fight.bout || 'Main Event';
+      inputs.red.value = fight.red || 'Red Fighter';
+      inputs.blue.value = fight.blue || 'Blue Fighter';
+      inputs.sponsor.value = fight.sponsor || '';
+      inputs.rounds.value = fight.rounds || 1;
+      inputs.roundTime.value = fight.roundTime || '3:00';
+      inputs.restTime.value = fight.restTime || '1:00';
+      inputs.prepTime.value = fight.prepTime || '0:10';
+      inputs.warning.value = fight.warning || '0:10';
+      inputs.autoStartRounds.checked = fight.autoStartRounds !== false;
+      inputs.showCorners.checked = fight.showCorners !== false;
+      resetTimer();
+    }
+
+    function saveFights() {
+      localStorage.setItem('boxingPreparedFights', JSON.stringify(state.fights));
+      renderFightList();
+    }
+
+    function saveCurrentFight() {
+      const fight = currentFightData();
+      fight.id = Date.now();
+      state.fights.push(fight);
+      saveFights();
+    }
+
+    function deleteFight(id) {
+      state.fights = state.fights.filter(fight => fight.id !== id);
+      saveFights();
+    }
+
+    function clearFights() {
+      state.fights = [];
+      saveFights();
+    }
+
+    function renderFightList() {
+      const list = $('fightList');
+      if (!state.fights.length) {
+        list.innerHTML = '<div class="fight-item"><div class="fight-meta"><strong>No prepared fights yet</strong><span>Use Save Current Fight to add one.</span></div></div>';
+        return;
+      }
+
+      list.innerHTML = state.fights.map((fight, index) => `
+        <div class="fight-item">
+          <div class="fight-meta">
+            <strong>${index + 1}. ${fight.red || 'Red'} vs ${fight.blue || 'Blue'}</strong>
+            <span>${fight.bout || 'Bout'} · ${fight.rounds || 1} x ${fight.roundTime || '3:00'} · Rest ${fight.restTime || '1:00'}</span>
+          </div>
+          <div class="fight-actions">
+            <button class="start" data-load-fight="${fight.id}">Load</button>
+            <button class="reset" data-delete-fight="${fight.id}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('[data-load-fight]').forEach(button => {
+        button.addEventListener('click', () => {
+          const fight = state.fights.find(item => item.id === Number(button.dataset.loadFight));
+          if (fight) applyFightData(fight);
+          button.blur();
+        });
+      });
+
+      list.querySelectorAll('[data-delete-fight]').forEach(button => {
+        button.addEventListener('click', () => {
+          deleteFight(Number(button.dataset.deleteFight));
+          button.blur();
+        });
+      });
     }
 
     function addHistory(text) {
@@ -805,6 +935,14 @@
     $('skipBtn').addEventListener('click', () => nextPhase(false));
     $('testStartBellBtn').addEventListener('click', playStartBell);
     $('testEndBellBtn').addEventListener('click', playEndBell);
+    $('saveFightBtn').addEventListener('click', () => {
+      saveCurrentFight();
+      $('saveFightBtn').blur();
+    });
+    $('clearFightsBtn').addEventListener('click', () => {
+      clearFights();
+      $('clearFightsBtn').blur();
+    });
 
     $('displayBtn').addEventListener('click', () => {
       document.body.classList.remove('overlay-mode');
@@ -833,7 +971,22 @@
     });
 
     document.querySelectorAll('[data-preset]').forEach(btn => {
-      btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+      btn.addEventListener('click', () => {
+        applyPreset(btn.dataset.preset);
+        btn.blur();
+      });
+    });
+
+    // Prevent keyboard keys like Space/Enter from re-triggering focused buttons.
+    document.querySelectorAll('button').forEach(button => {
+      button.setAttribute('type', 'button');
+      button.addEventListener('click', () => button.blur());
+      button.addEventListener('keydown', (event) => {
+        if (event.code === 'Space' || event.code === 'Enter') {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      });
     });
 
     Object.values(inputs).forEach(input => {
@@ -847,6 +1000,7 @@
     
 
     setInterval(render, 1000);
+    renderFightList();
     resetTimer();
   </script>
 </body>
