@@ -1053,8 +1053,13 @@
         state.round += 1;
         setPhase('round', cfg.roundTime);
         addHistory(`Round ${state.round} started`);
-        playStartBell();
-        if (!cfg.autoStartRounds && fromTimer) pauseTimer();
+
+        if (!cfg.autoStartRounds && fromTimer) {
+          pauseTimer();
+        } else {
+          playStartBell();
+        }
+
         return;
       }
 
