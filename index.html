@@ -56,7 +56,7 @@
     }
 
     .sponsor-strip {
-      min-height: 42px;
+      min-height: 110px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -69,8 +69,8 @@
     }
 
     .sponsor-strip img {
-      max-height: 58px;
-      max-width: 220px;
+      max-height: 110px;
+      max-width: 420px;
       object-fit: contain;
     }
 
@@ -500,7 +500,7 @@
         <h2>Round History</h2>
         <div class="history-list" id="historyList"></div>
         <p class="note">
-          Keyboard: Space = start/pause, R = reset, S = skip phase, B = start bell, E = end bell. OBS Overlay mode uses a transparent page background.
+          OBS Overlay mode uses a transparent page background for streaming and event projection.
         </p>
       </section>
     </aside>
@@ -844,16 +844,7 @@
       });
     });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        state.running ? pauseTimer() : startTimer();
-      }
-      if (e.key.toLowerCase() === 'r') resetTimer();
-      if (e.key.toLowerCase() === 's') nextPhase(false);
-      if (e.key.toLowerCase() === 'b') playStartBell();
-      if (e.key.toLowerCase() === 'e') playEndBell();
-    });
+    
 
     setInterval(render, 1000);
     resetTimer();
