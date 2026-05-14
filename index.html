@@ -423,6 +423,7 @@
         <button class="secondary" id="skipBtn">Skip Phase</button>
         <button class="reset" id="resetBtn">Reset</button>
         <button class="secondary" id="displayBtn">Display Mode</button>
+        <button class="secondary" id="outputBtn">Open Output Window</button>
         <button class="secondary" id="overlayBtn">OBS Overlay</button>
         <button class="secondary" id="fullscreenBtn">Fullscreen</button>
       </div>
@@ -547,6 +548,9 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
+
+    const params = new URLSearchParams(window.location.search);
+    const isOutputWindow = params.get('output') === '1';
 
     const state = {
       running: false,
@@ -854,6 +858,56 @@
       if (state.phase === 'finished') resetTimer();
     }
 
+    function broadcastState() {
+      if (isOutputWindow) return;
+      const payload = {
+        settings: currentFightData(),
+        phase: state.phase,
+        round: state.round,
+        timeLeft: state.timeLeft,
+        running: state.running,
+        logoUrl: state.logoUrl,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('boxingTimerLiveState', JSON.stringify(payload));
+    }
+
+    function applyBroadcastState(payload) {
+      if (!payload || !payload.settings) return;
+      const fight = payload.settings;
+      inputs.title.value = fight.title || 'Fight Night';
+      inputs.bout.value = fight.bout || 'Main Event';
+      inputs.red.value = fight.red || 'Red Fighter';
+      inputs.blue.value = fight.blue || 'Blue Fighter';
+      inputs.sponsor.value = fight.sponsor || '';
+      inputs.rounds.value = fight.rounds || 1;
+      inputs.roundTime.value = fight.roundTime || '3:00';
+      inputs.restTime.value = fight.restTime || '1:00';
+      inputs.prepTime.value = fight.prepTime || '0:10';
+      inputs.warning.value = fight.warning || '0:10';
+      inputs.autoStartRounds.checked = fight.autoStartRounds !== false;
+      inputs.showCorners.checked = fight.showCorners !== false;
+      state.phase = payload.phase || 'prep';
+      state.round = payload.round || 1;
+      state.timeLeft = payload.timeLeft || 0;
+      state.running = !!payload.running;
+      state.logoUrl = payload.logoUrl || null;
+      render();
+    }
+
+    function setupOutputWindow() {
+      if (!isOutputWindow) return;
+      document.body.classList.add('display-mode');
+      document.title = 'Boxing Timer Output';
+      const saved = localStorage.getItem('boxingTimerLiveState');
+      if (saved) applyBroadcastState(JSON.parse(saved));
+      window.addEventListener('storage', (event) => {
+        if (event.key === 'boxingTimerLiveState' && event.newValue) {
+          applyBroadcastState(JSON.parse(event.newValue));
+        }
+      });
+    }
+
     function render() {
       const cfg = settings();
       $('eventTitle').textContent = cfg.title;
@@ -902,6 +956,7 @@
       $('statusText').textContent = status;
       $('nextPhase').textContent = next;
       $('startBtn').textContent = state.running ? 'Running' : 'Start';
+      broadcastState();
     }
 
     function applyPreset(type) {
@@ -947,6 +1002,13 @@
     $('displayBtn').addEventListener('click', () => {
       document.body.classList.remove('overlay-mode');
       document.body.classList.toggle('display-mode');
+    });
+
+    $('outputBtn').addEventListener('click', () => {
+      broadcastState();
+      const outputUrl = `${window.location.pathname}?output=1`;
+      window.open(outputUrl, 'boxingTimerOutput');
+      $('outputBtn').blur();
     });
 
     $('overlayBtn').addEventListener('click', () => {
@@ -999,9 +1061,20 @@
 
     
 
-    setInterval(render, 1000);
-    renderFightList();
-    resetTimer();
+    setInterval(() => {
+      render();
+      broadcastState();
+    }, 1000);
+
+    setupOutputWindow();
+
+    if (!isOutputWindow) {
+      renderFightList();
+      resetTimer();
+      broadcastState();
+    } else {
+      renderFightList();
+    }
   </script>
 </body>
 </html>
