@@ -793,6 +793,13 @@
       if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
     }
 
+    function userTriggeredClickOnly(event) {
+      if (!event || !event.isTrusted) return false;
+      const active = document.activeElement;
+      if (active && active.tagName === 'INPUT') return false;
+      return true;
+    }
+
     function playAudioElement(id) {
       ensureAudio();
       const audio = $(id);
@@ -1211,8 +1218,16 @@
     $('pauseBtn').addEventListener('click', pauseTimer);
     $('resetBtn').addEventListener('click', resetTimer);
     $('skipBtn').addEventListener('click', () => nextPhase(false));
-    $('testStartBellBtn').addEventListener('click', playStartBell);
-    $('testEndBellBtn').addEventListener('click', playEndBell);
+    $('testStartBellBtn').addEventListener('click', (event) => {
+      if (!userTriggeredClickOnly(event)) return;
+      playStartBell();
+      $('testStartBellBtn').blur();
+    });
+    $('testEndBellBtn').addEventListener('click', (event) => {
+      if (!userTriggeredClickOnly(event)) return;
+      playEndBell();
+      $('testEndBellBtn').blur();
+    });
     $('walkoutBtn').addEventListener('click', () => {
       startWalkout();
       $('walkoutBtn').blur();
@@ -1274,12 +1289,26 @@
     document.querySelectorAll('button').forEach(button => {
       button.setAttribute('type', 'button');
       button.addEventListener('click', () => button.blur());
+      button.addEventListener('mousedown', () => button.blur());
       button.addEventListener('keydown', (event) => {
-        if (event.code === 'Space' || event.code === 'Enter') {
-          event.preventDefault();
-          event.stopPropagation();
-        }
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
       });
+      button.addEventListener('keyup', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      });
+    });
+
+    window.addEventListener('keydown', (event) => {
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (event.code === 'Space' || event.code === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+      }
     });
 
     Object.values(inputs).forEach(input => {
