@@ -667,13 +667,71 @@
           Show fighter names / corners
         </label>
 
+        <h2 style="margin-top:22px;">Walkout Music</h2>
+
+        <div class="settings-grid">
+          <div class="field-full">
+            <label for="redAudioInput">Red corner local audio</label>
+            <input id="redAudioInput" type="file" accept="audio/*" />
+          </div>
+
+          <div>
+            <label for="redMusicStartInput">Red start time</label>
+            <input id="redMusicStartInput" type="text" value="0:00" />
+          </div>
+
+          <div>
+            <label for="redSpotifyInput">Red Spotify link / URI</label>
+            <input id="redSpotifyInput" placeholder="spotify:track:... or URL" />
+          </div>
+
+          <div class="field-full button-row">
+            <button class="start" id="playRedMusicBtn">Play Red Walkout</button>
+            <button class="orange" id="fadeRedMusicBtn">Fade Red</button>
+          </div>
+
+          <div class="field-full">
+            <label for="blueAudioInput">Blue corner local audio</label>
+            <input id="blueAudioInput" type="file" accept="audio/*" />
+          </div>
+
+          <div>
+            <label for="blueMusicStartInput">Blue start time</label>
+            <input id="blueMusicStartInput" type="text" value="0:00" />
+          </div>
+
+          <div>
+            <label for="blueSpotifyInput">Blue Spotify link / URI</label>
+            <input id="blueSpotifyInput" placeholder="spotify:track:... or URL" />
+          </div>
+
+          <div>
+            <label for="fadeTimeInput">Fade out length</label>
+            <input id="fadeTimeInput" type="text" value="0:03" />
+          </div>
+
+          <div>
+            <label for="musicVolumeInput">Music volume</label>
+            <input id="musicVolumeInput" type="range" min="0" max="1" step="0.01" value="0.9" />
+          </div>
+
+          <div class="field-full button-row">
+            <button class="start" id="playBlueMusicBtn">Play Blue Walkout</button>
+            <button class="orange" id="fadeBlueMusicBtn">Fade Blue</button>
+          </div>
+
+          <div class="field-full">
+            <button class="reset" id="stopMusicBtn" style="width:100%;">Emergency Stop Music</button>
+          </div>
+        </div>
+
         <div class="button-row">
           <button class="orange" id="testStartBellBtn">Test Start Bell</button>
           <button class="orange" id="testEndBellBtn">Test End Bell</button>
         </div>
 
         <p class="note">
-          Audio files should sit beside this HTML file and be named <strong>bell 1.wav</strong> and <strong>bell 3.wav</strong>. Bell 1 plays at the start of each round. Bell 3 plays at the end of each round and at the end of the fight.
+          Audio files should sit beside this HTML file and be named <strong>bell 1.wav</strong> and <strong>bell 3.wav</strong>. Local walkout audio is the safest option for live events. Spotify links are saved with fights, but browser playback control requires a later Spotify API login layer.
         </p>
       </section>
 
@@ -702,6 +760,8 @@
 
   <audio id="startBell" src="bell 1.wav" preload="auto"></audio>
   <audio id="endBell" src="bell 3.wav" preload="auto"></audio>
+  <audio id="redWalkoutAudio" preload="auto"></audio>
+  <audio id="blueWalkoutAudio" preload="auto"></audio>
 
   <script>
     const $ = (id) => document.getElementById(id);
@@ -720,7 +780,11 @@
       history: [],
       fights: JSON.parse(localStorage.getItem('boxingPreparedFights') || '[]'),
       audioCtx: null,
-      logoUrl: null
+      logoUrl: null,
+      redAudioUrl: null,
+      blueAudioUrl: null,
+      activeMusic: null,
+      fadeInterval: null
     };
 
     const inputs = {
@@ -730,6 +794,14 @@
       blue: $('blueInput'),
       sponsor: $('sponsorInput'),
       logo: $('logoInput'),
+      redAudio: $('redAudioInput'),
+      blueAudio: $('blueAudioInput'),
+      redMusicStart: $('redMusicStartInput'),
+      blueMusicStart: $('blueMusicStartInput'),
+      redSpotify: $('redSpotifyInput'),
+      blueSpotify: $('blueSpotifyInput'),
+      fadeTime: $('fadeTimeInput'),
+      musicVolume: $('musicVolumeInput'),
       rounds: $('roundsInput'),
       roundTime: $('roundTimeInput'),
       restTime: $('restTimeInput'),
@@ -778,7 +850,13 @@
         usePrep: inputs.usePrep.checked,
         useRest: inputs.useRest.checked,
         autoStartRounds: inputs.autoStartRounds.checked,
-        showCorners: inputs.showCorners.checked
+        showCorners: inputs.showCorners.checked,
+        redMusicStart: inputs.redMusicStart.value || '0:00',
+        blueMusicStart: inputs.blueMusicStart.value || '0:00',
+        redSpotify: inputs.redSpotify.value || '',
+        blueSpotify: inputs.blueSpotify.value || '',
+        fadeTime: parseTime(inputs.fadeTime.value),
+        musicVolume: Number(inputs.musicVolume.value)
       };
     }
 
@@ -839,6 +917,86 @@
       fallbackTone(660, .12, 'square', .18);
     }
 
+    function setWalkoutFile(corner, file) {
+      if (!file) return;
+      const audioId = corner === 'red' ? 'redWalkoutAudio' : 'blueWalkoutAudio';
+      const urlKey = corner === 'red' ? 'redAudioUrl' : 'blueAudioUrl';
+      if (state[urlKey]) URL.revokeObjectURL(state[urlKey]);
+      state[urlKey] = URL.createObjectURL(file);
+      $(audioId).src = state[urlKey];
+    }
+
+    function openSpotify(corner) {
+      const cfg = settings();
+      const link = corner === 'red' ? cfg.redSpotify : cfg.blueSpotify;
+      if (!link) return false;
+      window.open(link, '_blank');
+      return true;
+    }
+
+    function playWalkout(corner) {
+      const cfg = settings();
+      clearInterval(state.fadeInterval);
+
+      const audio = corner === 'red' ? $('redWalkoutAudio') : $('blueWalkoutAudio');
+      const start = corner === 'red' ? parseTime(cfg.redMusicStart) : parseTime(cfg.blueMusicStart);
+
+      stopOtherWalkout(corner);
+
+      if (audio.src) {
+        audio.volume = cfg.musicVolume;
+        audio.currentTime = start;
+        audio.play();
+        state.activeMusic = audio;
+        addHistory(`${corner === 'red' ? 'Red' : 'Blue'} walkout music started`);
+        return;
+      }
+
+      if (openSpotify(corner)) {
+        addHistory(`${corner === 'red' ? 'Red' : 'Blue'} Spotify walkout opened`);
+      }
+    }
+
+    function stopOtherWalkout(corner) {
+      const other = corner === 'red' ? $('blueWalkoutAudio') : $('redWalkoutAudio');
+      other.pause();
+      other.currentTime = 0;
+    }
+
+    function fadeWalkout(corner) {
+      const audio = corner === 'red' ? $('redWalkoutAudio') : $('blueWalkoutAudio');
+      if (!audio || audio.paused) return;
+
+      clearInterval(state.fadeInterval);
+      const fadeSeconds = Math.max(0.5, settings().fadeTime || 3);
+      const steps = 30;
+      const startVolume = audio.volume;
+      let step = 0;
+
+      state.fadeInterval = setInterval(() => {
+        step += 1;
+        audio.volume = Math.max(0, startVolume * (1 - step / steps));
+        if (step >= steps) {
+          clearInterval(state.fadeInterval);
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = settings().musicVolume;
+          addHistory(`${corner === 'red' ? 'Red' : 'Blue'} walkout music faded out`);
+        }
+      }, (fadeSeconds * 1000) / steps);
+    }
+
+    function stopAllMusic() {
+      clearInterval(state.fadeInterval);
+      [$('redWalkoutAudio'), $('blueWalkoutAudio')].forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = settings().musicVolume;
+      });
+      state.activeMusic = null;
+      addHistory('All walkout music stopped');
+    }
+
     function currentFightData() {
       const cfg = settings();
       return {
@@ -855,7 +1013,15 @@
         usePrep: cfg.usePrep,
         useRest: cfg.useRest,
         autoStartRounds: cfg.autoStartRounds,
-        showCorners: cfg.showCorners
+        showCorners: cfg.showCorners,
+        redMusicStart: cfg.redMusicStart,
+        blueMusicStart: cfg.blueMusicStart,
+        redSpotify: cfg.redSpotify,
+        blueSpotify: cfg.blueSpotify,
+        fadeTime: inputs.fadeTime.value,
+        musicVolume: cfg.musicVolume,
+        redAudioName: inputs.redAudio.files[0] ? inputs.redAudio.files[0].name : '',
+        blueAudioName: inputs.blueAudio.files[0] ? inputs.blueAudio.files[0].name : ''
       };
     }
 
@@ -875,6 +1041,12 @@
       inputs.useRest.checked = fight.useRest !== false;
       inputs.autoStartRounds.checked = fight.autoStartRounds !== false;
       inputs.showCorners.checked = fight.showCorners !== false;
+      inputs.redMusicStart.value = fight.redMusicStart || '0:00';
+      inputs.blueMusicStart.value = fight.blueMusicStart || '0:00';
+      inputs.redSpotify.value = fight.redSpotify || '';
+      inputs.blueSpotify.value = fight.blueSpotify || '';
+      inputs.fadeTime.value = fight.fadeTime || '0:03';
+      inputs.musicVolume.value = fight.musicVolume ?? 0.9;
       resetTimer();
     }
 
@@ -1236,6 +1408,34 @@
       playEndBell();
       $('testEndBellBtn').blur();
     });
+
+    $('playRedMusicBtn').addEventListener('click', () => {
+      playWalkout('red');
+      $('playRedMusicBtn').blur();
+    });
+
+    $('fadeRedMusicBtn').addEventListener('click', () => {
+      fadeWalkout('red');
+      $('fadeRedMusicBtn').blur();
+    });
+
+    $('playBlueMusicBtn').addEventListener('click', () => {
+      playWalkout('blue');
+      $('playBlueMusicBtn').blur();
+    });
+
+    $('fadeBlueMusicBtn').addEventListener('click', () => {
+      fadeWalkout('blue');
+      $('fadeBlueMusicBtn').blur();
+    });
+
+    $('stopMusicBtn').addEventListener('click', () => {
+      stopAllMusic();
+      $('stopMusicBtn').blur();
+    });
+
+    inputs.redAudio.addEventListener('change', () => setWalkoutFile('red', inputs.redAudio.files[0]));
+    inputs.blueAudio.addEventListener('change', () => setWalkoutFile('blue', inputs.blueAudio.files[0]));
         $('scoreWindowBtn').addEventListener('click', () => {
       const scoreUrl = `${window.location.pathname}?scores=1`;
       window.open(scoreUrl, 'boxingScoreWindow');
@@ -1323,7 +1523,7 @@
 
     Object.values(inputs).forEach(input => {
       input.addEventListener('input', () => {
-        if (input === inputs.logo) return;
+        if (input === inputs.logo || input === inputs.redAudio || input === inputs.blueAudio) return;
         if (!state.running) resetTimer();
         else render();
       });
