@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Professional Boxing Round Timer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Professional Boxing Event System</title>
+
+  <!-- Spotify Web Playback SDK -->
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
   <style>
     :root {
       --bg: #09090b;
       --panel: #18181b;
-      --panel-2: #27272a;
       --text: #fafafa;
       --muted: #a1a1aa;
       --red: #ef4444;
@@ -26,376 +28,362 @@
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
-      background: radial-gradient(circle at top, #27272a, var(--bg));
-      color: var(--text);
-      min-height: 100vh;
+      background: #09090b;
+      color: white;
       padding: 20px;
     }
 
-    body.display-mode,
-    body.overlay-mode {
-      width: 100vw;
-      height: 100vh;
-      min-height: 100vh;
-      overflow: hidden;
-      padding: 0;
-    }
-
     .app {
-      width: min(1400px, 100%);
-      margin: 0 auto;
       display: grid;
-      grid-template-columns: 1.45fr 0.75fr;
+      grid-template-columns: 1.4fr 0.8fr;
       gap: 20px;
+      max-width: 1500px;
+      margin: auto;
     }
 
-    .timer-card,
-    .settings-card,
-    .history-card {
-      background: rgba(24, 24, 27, 0.95);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 28px;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.42);
-      padding: 24px;
-    }
-
-    .timer-card {
-      min-height: 720px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      text-align: center;
-      overflow: hidden;
-      position: relative;
-    }
-          justify-content: space-between;
-      text-align: center;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .sponsor-strip {
-      min-height: 140px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 18px;
-      color: var(--muted);
-      font-weight: 800;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-
-    .sponsor-strip img {
-      max-height: 135px;
-      max-width: 620px;
-      object-fit: contain;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: clamp(2rem, 4vw, 4.5rem);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-
-    .subtitle {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: clamp(1rem, 1.8vw, 1.6rem);
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
-    }
-
-    .corners {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 16px;
-      align-items: center;
-      margin: 22px 0;
-    }
-
-    .corner {
+    .card {
+      background: #18181b;
       border-radius: 24px;
-      padding: 18px;
-      min-height: 116px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .red-corner {
-      background: linear-gradient(
-        135deg,
-        rgba(239,68,68,.95),
-        rgba(127,29,29,.9)
-      );
-    }
-
-    .blue-corner {
-      background: linear-gradient(
-        135deg,
-        rgba(59,130,246,.95),
-        rgba(30,58,138,.9)
-      );
-    }
-
-    .fighter-name {
-      font-size: clamp(1.6rem, 3vw, 3rem);
-      font-weight: 900;
-      text-transform: uppercase;
-      overflow-wrap: anywhere;
-    }
-
-    .time {
-      font-size: clamp(6rem, 16vw, 15.5rem);
-      font-weight: 950;
-      line-height: 0.86;
-      margin: 20px 0 8px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 14px;
-      margin-top: 24px;
-      position: sticky;
-      bottom: 12px;
-      z-index: 20;
-      background: rgba(9,9,11,.88);
+      padding: 24px;
       border: 1px solid rgba(255,255,255,.08);
-      border-radius: 22px;
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    input, button {
+      width: 100%;
       padding: 14px;
-      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      border: 0;
+      margin-top: 8px;
+      font-size: 16px;
+    }
+
+    input {
+      background: #101014;
+      color: white;
+      border: 1px solid rgba(255,255,255,.08);
     }
 
     button {
-      border: 0;
-      border-radius: 18px;
-      padding: 18px 24px;
-      font-size: 1.08rem;
-      font-weight: 850;
       cursor: pointer;
-      color: white;
-      background: #3f3f46;
+      font-weight: 700;
     }
 
-    .start { background: #22c55e; color: #052e16; }
-    .pause { background: #facc15; color: #422006; }
-    .reset { background: #ef4444; }
-    .secondary { background: #52525b; }
-    .orange { background: #fb923c; color: #431407; }
+    .start { background: #22c55e; }
+    .pause { background: #facc15; }
+    .reset { background: #ef4444; color: white; }
+    .secondary { background: #52525b; color: white; }
+    .orange { background: #fb923c; }
 
-    input {
-      width: 100%;
-      border: 1px solid rgba(255,255,255,.1);
-      background: #101014;
-      color: white;
-      border-radius: 13px;
-      padding: 12px;
-      font-size: .98rem;
+    .time {
+      font-size: 120px;
+      font-weight: 900;
+      text-align: center;
+      margin: 30px 0;
+    }
+
+    .fighter {
+      font-size: 32px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin: 10px 0;
     }
   </style>
 </head>
 <body>
-  <main class="app">
 
-  <section class="timer-card" id="timerCard">
+<div class="app">
 
-    <div>
-      <div class="sponsor-strip" id="sponsorStrip">
-        Main Sponsor
-      </div>
+  <div class="card">
 
-      <h1 id="eventTitle">Fight Night</h1>
-      <div class="subtitle" id="boutTitle">Main Event</div>
+    <h1 id="eventTitle">Fight Night</h1>
+    <h2 id="boutTitle">Main Event</h2>
 
-      <div class="corners">
-        <div class="corner red-corner">
-          <div>Red Corner</div>
-          <div class="fighter-name" id="redNameDisplay">
-            Red Fighter
-          </div>
-        </div>
-
-        <div>VS</div>
-
-        <div class="corner blue-corner">
-          <div>Blue Corner</div>
-          <div class="fighter-name" id="blueNameDisplay">
-            Blue Fighter
-          </div>
-        </div>
-      </div>
-
-      <div id="statusText">Ready</div>
-      <div class="time" id="timeDisplay">03:00</div>
+    <div class="fighter" id="redDisplay">
+      RED CORNER
     </div>
 
-    <div class="controls">
-      <button class="secondary" id="scoreWindowBtn">
-        Open Scoring Window
-      </button>
-
-      <button class="start" id="startBtn">
-        Start
-      </button>
-
-      <button class="pause" id="pauseBtn">
-        Pause
-      </button>
-
-      <button class="secondary" id="skipBtn">
-        Skip Phase
-      </button>
-
-      <button class="reset" id="resetBtn">
-        Reset
-      </button>
-
-      <button class="secondary" id="outputBtn">
-        Open Output Window
-      </button>
+    <div class="fighter" id="blueDisplay">
+      BLUE CORNER
     </div>
 
-  </section>
+    <div class="time" id="timeDisplay">
+      03:00
+    </div>
+        <h2 id="statusDisplay">Ready</h2>
 
-  <aside>
-
-    <div class="settings-card">
-
-      <h2>Event Settings</h2>
-
-      <label>Red Corner</label>
-      <input id="redInput" value="Red Fighter" />
-
-      <label>Blue Corner</label>
-      <input id="blueInput" value="Blue Fighter" />
-
-      <label>Rounds</label>
-      <input id="roundsInput" value="12" />
-
-      <label>Round Time</label>
-      <input id="roundTimeInput" value="3:00" />
-
-      <label>Rest Time</label>
-      <input id="restTimeInput" value="1:00" />
-
-      <h2 style="margin-top:30px;">
-        Walkout Music
-      </h2>
-
-      <label>Red Spotify Link</label>
-      <input
-        id="redSpotifyInput"
-        placeholder="spotify track link"
-      />
-
-      <button
-        class="start"
-        id="playRedMusicBtn"
-        style="margin-top:10px;"
-      >
-        Play Red Walkout
-      </button>
-
-      <label style="margin-top:20px;">
-        Blue Spotify Link
-      </label>
-
-      <input
-        id="blueSpotifyInput"
-        placeholder="spotify track link"
-      />
-
-      <button
-        class="start"
-        id="playBlueMusicBtn"
-        style="margin-top:10px;"
-      >
-        Play Blue Walkout
-      </button>
-
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+      <button class="start" id="startBtn">Start</button>
+      <button class="pause" id="pauseBtn">Pause</button>
+      <button class="reset" id="resetBtn">Reset</button>
     </div>
 
-  </aside>
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:10px;">
+      <button class="secondary" id="skipBtn">Skip Phase</button>
+      <button class="secondary" id="outputBtn">Open Output Window</button>
+      <button class="secondary" id="scoreBtn">Open Scoring Window</button>
+    </div>
 
-</main>
-  <audio id="startBell" src="bell 1.wav" preload="auto"></audio>
+  </div>
+
+  <div class="card">
+
+    <h2>Event Settings</h2>
+
+    <label>Event Title</label>
+    <input id="eventTitleInput" value="Fight Night">
+
+    <label>Bout Title</label>
+    <input id="boutTitleInput" value="Main Event">
+
+    <label>Red Corner Fighter</label>
+    <input id="redInput" value="Red Fighter">
+
+    <label>Blue Corner Fighter</label>
+    <input id="blueInput" value="Blue Fighter">
+
+    <label>Number of Rounds</label>
+    <input id="roundsInput" type="number" value="12">
+
+    <label>Round Time</label>
+    <input id="roundTimeInput" value="3:00">
+
+    <label>Rest Time</label>
+    <input id="restTimeInput" value="1:00">
+
+    <label>Prep Time</label>
+    <input id="prepTimeInput" value="0:10">
+
+    <label>
+      <input id="usePrepInput" type="checkbox" checked style="width:auto;">
+      Use Prep Countdown
+    </label>
+
+    <label>
+      <input id="useRestInput" type="checkbox" checked style="width:auto;">
+      Use Rest Between Rounds
+    </label>
+
+    <label>
+      <input id="autoContinueInput" type="checkbox" checked style="width:auto;">
+      Automatically Continue Between Rounds
+    </label>
+        <h2 style="margin-top:30px;">Walkout Music</h2>
+
+    <label>Red Corner Local Audio</label>
+    <input id="redAudioInput" type="file" accept="audio/*">
+
+    <label>Red Spotify Track Link</label>
+    <input
+      id="redSpotifyInput"
+      placeholder="https://open.spotify.com/track/..."
+    >
+
+    <label>Red Start Time</label>
+    <input id="redStartInput" value="0:00">
+
+    <button class="start" id="playRedBtn">
+      Play Red Walkout
+    </button>
+
+    <button class="orange" id="fadeRedBtn">
+      Fade Red Walkout
+    </button>
+
+    <label style="margin-top:20px;">Blue Corner Local Audio</label>
+    <input id="blueAudioInput" type="file" accept="audio/*">
+
+    <label>Blue Spotify Track Link</label>
+    <input
+      id="blueSpotifyInput"
+      placeholder="https://open.spotify.com/track/..."
+    >
+
+    <label>Blue Start Time</label>
+    <input id="blueStartInput" value="0:00">
+
+    <button class="start" id="playBlueBtn">
+      Play Blue Walkout
+    </button>
+
+    <button class="orange" id="fadeBlueBtn">
+      Fade Blue Walkout
+    </button>
+
+    <button
+      class="reset"
+      id="stopMusicBtn"
+      style="margin-top:20px;"
+    >
+      Emergency Stop Music
+    </button>
+
+    <h2 style="margin-top:30px;">
+      Spotify Professional Control
+    </h2>
+
+    <label>Spotify Client ID</label>
+    <input
+      id="spotifyClientIdInput"
+      placeholder="Spotify Developer Client ID"
+    >
+
+    <label>Redirect URI</label>
+    <input
+      id="spotifyRedirectInput"
+      placeholder="http://127.0.0.1:5500/index.html"
+    >
+
+    <button class="start" id="connectSpotifyBtn">
+      Connect Spotify
+    </button>
+
+    <button class="secondary" id="disconnectSpotifyBtn">
+      Disconnect Spotify
+    </button>
+
+    <p id="spotifyStatus">
+      Spotify not connected
+    </p>
+
+  </div>
+</div>
+<audio id="startBell" src="bell 1.wav" preload="auto"></audio>
 <audio id="endBell" src="bell 3.wav" preload="auto"></audio>
+<audio id="redWalkoutAudio" preload="auto"></audio>
+<audio id="blueWalkoutAudio" preload="auto"></audio>
 
 <script>
 const $ = (id) => document.getElementById(id);
 
-let running = false;
-let round = 1;
-let phase = "round";
-let timeLeft = 180;
-let timer = null;
+const state = {
+  running: false,
+  phase: "prep",
+  round: 1,
+  timeLeft: 10,
+  timer: null,
+
+  spotifyAccessToken: null,
+  spotifyDeviceId: null,
+  spotifyPlayer: null,
+
+  activeMusic: null,
+  fadeInterval: null,
+
+  redAudioUrl: null,
+  blueAudioUrl: null
+};
 
 function parseTime(value) {
-  const parts = value.split(":").map(Number);
+  const raw = String(value).trim();
 
-  if (parts.length === 2) {
-    return (parts[0] * 60) + parts[1];
+  if (!raw) return 0;
+
+  if (raw.includes(":")) {
+    const parts = raw.split(":").map(Number);
+
+    if (parts.length === 2) {
+      return (parts[0] * 60) + parts[1];
+    }
+
+    if (parts.length === 3) {
+      return (
+        (parts[0] * 3600) +
+        (parts[1] * 60) +
+        parts[2]
+      );
+    }
   }
 
-  return Number(value) || 0;
+  return Number(raw) || 0;
 }
 
 function formatTime(seconds) {
+  seconds = Math.max(0, Math.ceil(seconds));
+
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
 
-  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function playStartBell() {
+function render() {
+  $("eventTitle").textContent =
+    $("eventTitleInput").value || "Fight Night";
+
+  $("boutTitle").textContent =
+    $("boutTitleInput").value || "Main Event";
+
+  $("redDisplay").textContent =
+    $("redInput").value || "Red Fighter";
+
+  $("blueDisplay").textContent =
+    $("blueInput").value || "Blue Fighter";
+
+  $("timeDisplay").textContent =
+    formatTime(state.timeLeft);
+
+  $("statusDisplay").textContent =
+    state.running
+      ? `Round ${state.round}`
+      : "Stopped";
+}
+  function playStartBell() {
   const bell = $("startBell");
   bell.currentTime = 0;
-  bell.play();
+  bell.play().catch(() => {});
 }
 
 function playEndBell() {
   const bell = $("endBell");
   bell.currentTime = 0;
-  bell.play();
+  bell.play().catch(() => {});
 }
 
-function render() {
-  $("redNameDisplay").textContent =
-    $("redInput").value || "Red Fighter";
+function resetTimer() {
+  clearInterval(state.timer);
 
-  $("blueNameDisplay").textContent =
-    $("blueInput").value || "Blue Fighter";
-
-  $("timeDisplay").textContent =
-    formatTime(timeLeft);
-
-  $("statusText").textContent =
-    running ? `Round ${round}` : "Stopped";
-}
-  function startTimer() {
-  if (running) return;
+  state.running = false;
+  state.round = 1;
 
   if (
-    phase === "round" &&
-    timeLeft === parseTime($("roundTimeInput").value)
+    $("usePrepInput").checked &&
+    parseTime($("prepTimeInput").value) > 0
+  ) {
+    state.phase = "prep";
+    state.timeLeft =
+      parseTime($("prepTimeInput").value);
+  } else {
+    state.phase = "round";
+    state.timeLeft =
+      parseTime($("roundTimeInput").value);
+  }
+
+  render();
+}
+
+function startTimer() {
+  if (state.running) return;
+
+  if (
+    state.phase === "round" &&
+    state.timeLeft ===
+      parseTime($("roundTimeInput").value)
   ) {
     playStartBell();
   }
 
-  running = true;
+  state.running = true;
   render();
 
-  timer = setInterval(() => {
-    timeLeft--;
+  state.timer = setInterval(() => {
+    state.timeLeft--;
 
-    if (timeLeft <= 0) {
-      nextPhase();
+    if (state.timeLeft <= 0) {
+      nextPhase(true);
     }
 
     render();
@@ -403,66 +391,450 @@ function render() {
 }
 
 function pauseTimer() {
-  running = false;
-  clearInterval(timer);
+  state.running = false;
+  clearInterval(state.timer);
   render();
 }
 
-function resetTimer() {
-  clearInterval(timer);
-  running = false;
-  round = 1;
-  phase = "round";
-  timeLeft = parseTime(
-    $("roundTimeInput").value
-  );
-
-  render();
-}
-
-function nextPhase() {
-  playEndBell();
-
-  clearInterval(timer);
-  running = false;
-
+function nextPhase(fromTimer = false) {
   const totalRounds =
     Number($("roundsInput").value) || 12;
 
-  if (round >= totalRounds) {
-    $("statusText").textContent =
-      "Fight Complete";
+  if (state.phase === "prep") {
+    state.phase = "round";
+    state.timeLeft =
+      parseTime($("roundTimeInput").value);
+
+    playStartBell();
+    render();
     return;
   }
 
-  round++;
-  timeLeft = parseTime(
-    $("roundTimeInput").value
+  if (state.phase === "round") {
+    playEndBell();
+
+    if (state.round >= totalRounds) {
+      pauseTimer();
+      $("statusDisplay").textContent =
+        "Fight Complete";
+      return;
+    }
+
+    if (
+      $("useRestInput").checked &&
+      parseTime($("restTimeInput").value) > 0
+    ) {
+      state.phase = "rest";
+      state.timeLeft =
+        parseTime($("restTimeInput").value);
+    } else {
+      state.round++;
+      state.phase = "round";
+      state.timeLeft =
+        parseTime($("roundTimeInput").value);
+      playStartBell();
+    }
+
+    render();
+    return;
+  }
+
+  if (state.phase === "rest") {
+    state.round++;
+    state.phase = "round";
+    state.timeLeft =
+      parseTime($("roundTimeInput").value);
+
+    if (
+      !$("autoContinueInput").checked &&
+      fromTimer
+    ) {
+      pauseTimer();
+    } else {
+      playStartBell();
+    }
+
+    render();
+  }
+}
+  function setWalkoutFile(corner, file) {
+  if (!file) return;
+
+  const audioId =
+    corner === "red"
+      ? "redWalkoutAudio"
+      : "blueWalkoutAudio";
+
+  const stateKey =
+    corner === "red"
+      ? "redAudioUrl"
+      : "blueAudioUrl";
+
+  if (state[stateKey]) {
+    URL.revokeObjectURL(state[stateKey]);
+  }
+
+  state[stateKey] =
+    URL.createObjectURL(file);
+
+  $(audioId).src =
+    state[stateKey];
+}
+
+function stopAllMusic() {
+  clearInterval(state.fadeInterval);
+
+  ["redWalkoutAudio", "blueWalkoutAudio"]
+    .forEach(id => {
+      const audio = $(id);
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 1;
+    });
+
+  state.activeMusic = null;
+}
+
+function fadeWalkout(corner) {
+  const audio =
+    corner === "red"
+      ? $("redWalkoutAudio")
+      : $("blueWalkoutAudio");
+
+  if (!audio || audio.paused) return;
+
+  clearInterval(state.fadeInterval);
+
+  let step = 0;
+  const steps = 30;
+  const startVolume = audio.volume;
+
+  state.fadeInterval = setInterval(() => {
+    step++;
+
+    audio.volume =
+      Math.max(
+        0,
+        startVolume * (1 - step / steps)
+      );
+
+    if (step >= steps) {
+      clearInterval(state.fadeInterval);
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = 1;
+    }
+  }, 100);
+}
+
+function playLocalWalkout(corner) {
+  const audio =
+    corner === "red"
+      ? $("redWalkoutAudio")
+      : $("blueWalkoutAudio");
+
+  const start =
+    corner === "red"
+      ? parseTime($("redStartInput").value)
+      : parseTime($("blueStartInput").value);
+
+  if (!audio.src) return false;
+
+  stopAllMusic();
+
+  audio.currentTime = start;
+  audio.volume = 1;
+  audio.play().catch(() => {});
+
+  state.activeMusic = audio;
+
+  return true;
+}
+  function getSpotifyTrackUri(link) {
+  if (!link) return null;
+
+  if (link.startsWith("spotify:track:")) {
+    return link;
+  }
+
+  if (link.includes("open.spotify.com/track/")) {
+    const parts = link.split("/track/")[1];
+    if (!parts) return null;
+
+    const id = parts.split("?")[0];
+    return `spotify:track:${id}`;
+  }
+
+  return null;
+}
+
+function saveSpotifySettings() {
+  localStorage.setItem(
+    "spotifyClientId",
+    $("spotifyClientIdInput").value
   );
 
-  render();
+  localStorage.setItem(
+    "spotifyRedirectUri",
+    $("spotifyRedirectInput").value
+  );
 }
 
-function openSpotify(link) {
-  if (!link) return;
+function loadSpotifySettings() {
+  $("spotifyClientIdInput").value =
+    localStorage.getItem("spotifyClientId") || "";
 
-  window.open(link, "_blank");
+  $("spotifyRedirectInput").value =
+    localStorage.getItem("spotifyRedirectUri") || "";
 }
 
-function playRedWalkout() {
-  const link = $("redSpotifyInput").value.trim();
+function connectSpotify() {
+  const clientId =
+    $("spotifyClientIdInput").value.trim();
 
-  if (!link) return;
+  const redirectUri =
+    $("spotifyRedirectInput").value.trim();
 
-  openSpotify(link);
+  if (!clientId || !redirectUri) {
+    $("spotifyStatus").textContent =
+      "Enter Client ID + Redirect URI first";
+    return;
+  }
+
+  saveSpotifySettings();
+
+  const scope =
+    "streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state";
+
+  const authUrl =
+    `https://accounts.spotify.com/authorize?` +
+    `client_id=${clientId}` +
+    `&response_type=token` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&scope=${encodeURIComponent(scope)}`;
+
+  window.location.href = authUrl;
 }
 
-function playBlueWalkout() {
-  const link = $("blueSpotifyInput").value.trim();
+function readSpotifyTokenFromUrl() {
+  const hash =
+    window.location.hash.substring(1);
 
-  if (!link) return;
+  const params =
+    new URLSearchParams(hash);
 
-  openSpotify(link);
+  const token =
+    params.get("access_token");
+
+  if (token) {
+    state.spotifyAccessToken = token;
+
+    $("spotifyStatus").textContent =
+      "Spotify Connected";
+
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    );
+
+    initSpotifyPlayer();
+  }
+}
+
+function disconnectSpotify() {
+  state.spotifyAccessToken = null;
+  state.spotifyDeviceId = null;
+  state.spotifyPlayer = null;
+
+  $("spotifyStatus").textContent =
+    "Spotify disconnected";
+}
+  function initSpotifyPlayer() {
+  if (!state.spotifyAccessToken) return;
+
+  window.onSpotifyWebPlaybackSDKReady = () => {
+    const player = new Spotify.Player({
+      name: "Boxing Event Controller",
+      getOAuthToken: cb => {
+        cb(state.spotifyAccessToken);
+      },
+      volume: 0.9
+    });
+
+    player.addListener(
+      "ready",
+      ({ device_id }) => {
+        state.spotifyDeviceId = device_id;
+
+        $("spotifyStatus").textContent =
+          "Spotify Device Ready";
+
+        console.log(
+          "Spotify device ready:",
+          device_id
+        );
+      }
+    );
+
+    player.addListener(
+      "initialization_error",
+      ({ message }) => {
+        $("spotifyStatus").textContent =
+          "Spotify init error";
+        console.log(message);
+      }
+    );
+
+    player.addListener(
+      "authentication_error",
+      ({ message }) => {
+        $("spotifyStatus").textContent =
+          "Spotify auth error";
+        console.log(message);
+      }
+    );
+
+    player.connect();
+
+    state.spotifyPlayer = player;
+  };
+
+  if (window.Spotify) {
+    window.onSpotifyWebPlaybackSDKReady();
+  }
+}
+
+async function playSpotifyTrack(
+  spotifyLink,
+  startTimeSeconds = 0
+) {
+  if (
+    !state.spotifyAccessToken ||
+    !state.spotifyDeviceId
+  ) {
+    $("spotifyStatus").textContent =
+      "Spotify not connected";
+    return false;
+  }
+
+  const uri =
+    getSpotifyTrackUri(spotifyLink);
+
+  if (!uri) {
+    $("spotifyStatus").textContent =
+      "Invalid Spotify track link";
+    return false;
+  }
+
+  await fetch(
+    `https://api.spotify.com/v1/me/player/play?device_id=${state.spotifyDeviceId}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization:
+          `Bearer ${state.spotifyAccessToken}`,
+        "Content-Type":
+          "application/json"
+      },
+      body: JSON.stringify({
+        uris: [uri],
+        position_ms:
+          startTimeSeconds * 1000
+      })
+    }
+  );
+
+  $("spotifyStatus").textContent =
+    "Spotify playback started";
+
+  return true;
+}
+  async function playWalkout(corner) {
+  const isRed = corner === "red";
+
+  const localWorked =
+    playLocalWalkout(corner);
+
+  if (localWorked) {
+    return;
+  }
+
+  const spotifyLink =
+    isRed
+      ? $("redSpotifyInput").value.trim()
+      : $("blueSpotifyInput").value.trim();
+
+  const startTime =
+    isRed
+      ? parseTime($("redStartInput").value)
+      : parseTime($("blueStartInput").value);
+
+  if (!spotifyLink) {
+    $("spotifyStatus").textContent =
+      "No local file or Spotify link found";
+    return;
+  }
+
+  await playSpotifyTrack(
+    spotifyLink,
+    startTime
+  );
+}
+
+async function fadeSpotifyOut() {
+  if (!state.spotifyPlayer) return;
+
+  let volume = 0.9;
+
+  clearInterval(state.fadeInterval);
+
+  state.fadeInterval = setInterval(async () => {
+    volume -= 0.03;
+
+    if (volume <= 0) {
+      clearInterval(state.fadeInterval);
+
+      await fetch(
+        "https://api.spotify.com/v1/me/player/pause",
+        {
+          method: "PUT",
+          headers: {
+            Authorization:
+              `Bearer ${state.spotifyAccessToken}`
+          }
+        }
+      );
+
+      $("spotifyStatus").textContent =
+        "Spotify faded out";
+
+      return;
+    }
+
+    state.spotifyPlayer.setVolume(
+      Math.max(0, volume)
+    );
+
+  }, 100);
+}
+
+function fadeWalkoutSmart(corner) {
+  const localAudio =
+    corner === "red"
+      ? $("redWalkoutAudio")
+      : $("blueWalkoutAudio");
+
+  if (
+    localAudio &&
+    !localAudio.paused &&
+    localAudio.src
+  ) {
+    fadeWalkout(corner);
+    return;
+  }
+
+  fadeSpotifyOut();
 }
   $("startBtn").addEventListener(
   "click",
@@ -481,17 +853,66 @@ $("resetBtn").addEventListener(
 
 $("skipBtn").addEventListener(
   "click",
-  nextPhase
+  () => nextPhase(false)
 );
 
-$("playRedMusicBtn").addEventListener(
+$("playRedBtn").addEventListener(
   "click",
-  playRedWalkout
+  () => playWalkout("red")
 );
 
-$("playBlueMusicBtn").addEventListener(
+$("fadeRedBtn").addEventListener(
   "click",
-  playBlueWalkout
+  () => fadeWalkoutSmart("red")
+);
+
+$("playBlueBtn").addEventListener(
+  "click",
+  () => playWalkout("blue")
+);
+
+$("fadeBlueBtn").addEventListener(
+  "click",
+  () => fadeWalkoutSmart("blue")
+);
+
+$("stopMusicBtn").addEventListener(
+  "click",
+  stopAllMusic
+);
+
+$("redAudioInput").addEventListener(
+  "change",
+  (e) => {
+    if (e.target.files[0]) {
+      setWalkoutFile(
+        "red",
+        e.target.files[0]
+      );
+    }
+  }
+);
+
+$("blueAudioInput").addEventListener(
+  "change",
+  (e) => {
+    if (e.target.files[0]) {
+      setWalkoutFile(
+        "blue",
+        e.target.files[0]
+      );
+    }
+  }
+);
+
+$("connectSpotifyBtn").addEventListener(
+  "click",
+  connectSpotify
+);
+
+$("disconnectSpotifyBtn").addEventListener(
+  "click",
+  disconnectSpotify
 );
 
 $("outputBtn").addEventListener(
@@ -504,7 +925,7 @@ $("outputBtn").addEventListener(
   }
 );
 
-$("scoreWindowBtn").addEventListener(
+$("scoreBtn").addEventListener(
   "click",
   () => {
     window.open(
@@ -514,9 +935,11 @@ $("scoreWindowBtn").addEventListener(
   }
 );
 
+loadSpotifySettings();
+readSpotifyTokenFromUrl();
 resetTimer();
+render();
 
 </script>
 </body>
 </html>
-  
