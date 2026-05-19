@@ -1,17 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Professional Boxing Event System</title>
-
-  <!-- Spotify Web Playback SDK -->
-  <script src="https://sdk.scdn.co/spotify-player.js"></script>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Professional Boxing Round Timer</title>
   <style>
     :root {
       --bg: #09090b;
       --panel: #18181b;
+      --panel-2: #27272a;
       --text: #fafafa;
       --muted: #a1a1aa;
       --red: #ef4444;
@@ -21,925 +18,1334 @@
       --orange: #fb923c;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
-      background: #09090b;
-      color: white;
+      background: radial-gradient(circle at top, #27272a, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
       padding: 20px;
     }
 
+    body.display-mode,
+    body.overlay-mode {
+      width: 100vw;
+      height: 100vh;
+      min-height: 100vh;
+      overflow: hidden;
+      padding: 0;
+    }
+
     .app {
+      width: min(1400px, 100%);
+      margin: 0 auto;
       display: grid;
-      grid-template-columns: 1.4fr 0.8fr;
+      grid-template-columns: 1.45fr 0.75fr;
       gap: 20px;
-      max-width: 1500px;
-      margin: auto;
     }
 
-    .card {
-      background: #18181b;
-      border-radius: 24px;
+    .timer-card, .settings-card, .history-card {
+      background: rgba(24, 24, 27, 0.95);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 28px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.42);
       padding: 24px;
-      border: 1px solid rgba(255,255,255,.08);
     }
 
-    h1, h2 {
-      margin-top: 0;
+    .timer-card {
+      min-height: 720px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+      overflow: hidden;
+      position: relative;
     }
 
-    input, button {
-      width: 100%;
-      padding: 14px;
-      border-radius: 12px;
-      border: 0;
+    .sponsor-strip {
+      min-height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .sponsor-strip img {
+      max-height: 135px;
+      max-width: 620px;
+      object-fit: contain;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 4.5rem);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
       margin-top: 8px;
-      font-size: 16px;
+      color: var(--muted);
+      font-size: clamp(1rem, 1.8vw, 1.6rem);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
     }
 
-    input {
-      background: #101014;
-      color: white;
+    .corners {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: center;
+      margin: 22px 0;
+    }
+
+    .corner {
+      border-radius: 24px;
+      padding: 18px;
+      min-height: 116px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .red-corner { background: linear-gradient(135deg, rgba(239,68,68,.95), rgba(127,29,29,.9)); }
+    .blue-corner { background: linear-gradient(135deg, rgba(59,130,246,.95), rgba(30,58,138,.9)); }
+
+    .corner-label {
+      font-size: 0.85rem;
+      opacity: 0.82;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      margin-bottom: 8px;
+    }
+
+    .fighter-name {
+      font-size: clamp(1.6rem, 3vw, 3rem);
+      font-weight: 900;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    .vs {
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .status {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: clamp(1.1rem, 2vw, 2rem);
+    }
+
+    .time {
+      font-size: clamp(6rem, 16vw, 15.5rem);
+      font-weight: 950;
+      line-height: 0.86;
+      margin: 20px 0 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .state-round { box-shadow: 0 0 100px rgba(239,68,68,0.26); }
+    .state-rest { box-shadow: 0 0 100px rgba(34,197,94,0.22); }
+    .state-prep { box-shadow: 0 0 100px rgba(59,130,246,0.22); }
+    .state-finished { box-shadow: 0 0 120px rgba(250,204,21,0.28); }
+    .state-warning { animation: pulse 0.7s infinite alternate; }
+
+    @keyframes pulse {
+      from { filter: brightness(1); }
+      to { filter: brightness(1.28); }
+    }
+
+    .round-info {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .info-box {
+      background: rgba(39,39,42,.9);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .info-label {
+      color: var(--muted);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      margin-bottom: 7px;
+    }
+
+    .info-value {
+      font-size: 1.55rem;
+      font-weight: 900;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+      margin-top: 24px;
+      position: sticky;
+      bottom: 12px;
+      z-index: 20;
+      background: rgba(9,9,11,.88);
       border: 1px solid rgba(255,255,255,.08);
+      border-radius: 22px;
+      padding: 14px;
+      backdrop-filter: blur(10px);
     }
 
     button {
+      border: 0;
+      border-radius: 18px;
+      padding: 18px 24px;
+      font-size: 1.08rem;
+      font-weight: 850;
       cursor: pointer;
-      font-weight: 700;
+      color: white;
+      background: #3f3f46;
+      transition: transform .1s ease, opacity .15s ease;
     }
 
-    .start { background: #22c55e; }
-    .pause { background: #facc15; }
-    .reset { background: #ef4444; color: white; }
-    .secondary { background: #52525b; color: white; }
-    .orange { background: #fb923c; }
+    button:hover { opacity: .9; }
+    button:active { transform: scale(.97); }
+    .start { background: var(--green); color: #052e16; }
+    .pause { background: var(--yellow); color: #422006; }
+    .reset { background: var(--red); }
+    .secondary { background: #52525b; }
+    .orange { background: var(--orange); color: #431407; }
 
-    .time {
-      font-size: 120px;
-      font-weight: 900;
-      text-align: center;
-      margin: 30px 0;
+    .side-column {
+      display: grid;
+      gap: 20px;
     }
 
-    .fighter {
-      font-size: 32px;
-      font-weight: 800;
+    .settings-card h2, .history-card h2, .fight-list-card h2 {
+      margin: 0 0 18px;
+      font-size: 1.45rem;
+    }
+
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .preset-row button { padding: 14px; font-size: .95rem; background: #334155; }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field-full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: .76rem;
       text-transform: uppercase;
-      margin: 10px 0;
+      letter-spacing: .08em;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.1);
+      background: #101014;
+      color: var(--text);
+      border-radius: 13px;
+      padding: 12px;
+      font-size: .98rem;
+    }
+
+    input[type="range"] { padding: 8px; }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .checkbox-row input { width: auto; }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .button-row button { width: 100%; }
+
+    .history-list, .fight-list {
+      display: grid;
+      gap: 8px;
+      max-height: 260px;
+      overflow: auto;
+    }
+
+    .history-item, .fight-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: #101014;
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: var(--muted);
+      font-size: .92rem;
+    }
+
+    .fight-meta {
+      display: grid;
+      gap: 3px;
+      text-align: left;
+    }
+
+    .fight-meta strong {
+      color: var(--text);
+      font-size: .98rem;
+    }
+
+    .fight-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .fight-actions button {
+      padding: 12px 14px;
+      font-size: .9rem;
+      border-radius: 12px;
+    }
+
+    .note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: .86rem;
+      line-height: 1.45;
+    }
+
+    .overlay-mode .side-column,
+    .display-mode .side-column,
+    .display-mode .controls {
+      display: none;
+    }
+
+    body.overlay-mode,
+    body.display-mode {
+      padding: 0;
+      background: transparent;
+    }
+
+    .overlay-mode .app,
+    .display-mode .app {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      min-height: 100vh;
+      grid-template-columns: 1fr;
+      overflow: hidden;
+    }
+
+    .overlay-mode .timer-card,
+    .display-mode .timer-card {
+      border-radius: 0;
+      width: 100vw;
+      height: 100vh;
+      min-height: 100vh;
+      border: 0;
+      overflow: hidden;
+      padding: 2vh 3vw;
+    }
+
+    .bottom-media {
+      display: none;
+      min-height: 130px;
+      margin-top: 18px;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+
+    .bottom-media img {
+      max-height: 125px;
+      max-width: 620px;
+      object-fit: contain;
+    }
+
+    .display-mode .sponsor-strip,
+    .overlay-mode .sponsor-strip {
+      min-height: 13vh;
+      max-height: 13vh;
+      margin-bottom: 1vh;
+    }
+
+    .display-mode .sponsor-strip img,
+    .overlay-mode .sponsor-strip img {
+      max-height: 12vh;
+      max-width: 70vw;
+    }
+
+    .display-mode .bottom-media,
+    .overlay-mode .bottom-media {
+      display: flex;
+      min-height: 12vh;
+      max-height: 12vh;
+      margin-top: 1vh;
+    }
+
+    .display-mode .bottom-media img,
+    .overlay-mode .bottom-media img {
+      max-height: 11vh;
+      max-width: 70vw;
+    }
+
+    .display-mode .round-info,
+    .overlay-mode .round-info {
+      grid-template-columns: repeat(3, 1fr);
+      max-width: 1050px;
+      width: 100%;
+      margin: 1.5vh auto 0;
+      gap: 1vw;
+    }
+
+    .display-mode .mode-box,
+    .overlay-mode .mode-box {
+      display: none;
+    }
+
+    .display-mode .info-value,
+    .overlay-mode .info-value {
+      font-size: clamp(2.4rem, 4.4vw, 5rem);
+    }
+
+    .display-mode .info-label,
+    .overlay-mode .info-label {
+      font-size: clamp(1rem, 1.4vw, 1.5rem);
+    }
+
+    .display-mode #currentRound,
+    .display-mode #totalRoundsDisplay,
+    .overlay-mode #currentRound,
+    .overlay-mode #totalRoundsDisplay {
+      font-size: clamp(3rem, 5vw, 5.8rem);
+    }
+
+    .display-mode h1,
+    .overlay-mode h1 {
+      font-size: clamp(1.8rem, 3.4vw, 4rem);
+    }
+
+    .display-mode .subtitle,
+    .overlay-mode .subtitle {
+      font-size: clamp(.9rem, 1.4vw, 1.4rem);
+      margin-top: .5vh;
+    }
+
+    .display-mode .corners,
+    .overlay-mode .corners {
+      margin: 1.5vh 0;
+    }
+
+    .display-mode .corner,
+    .overlay-mode .corner {
+      min-height: 9vh;
+      padding: 1.2vh 1.2vw;
+    }
+
+    .display-mode .fighter-name,
+    .overlay-mode .fighter-name {
+      font-size: clamp(1.4rem, 2.5vw, 3.2rem);
+    }
+
+    .display-mode .status,
+    .overlay-mode .status {
+      font-size: clamp(1rem, 1.7vw, 1.8rem);
+    }
+
+    .display-mode .time,
+    .overlay-mode .time {
+      font-size: clamp(5rem, 13vw, 13rem);
+      margin: 1.5vh 0 .8vh;
+    }
+
+    .display-mode .info-box,
+    .overlay-mode .info-box {
+      padding: 1.2vh 1vw;
+    }
+
+    .overlay-mode .timer-card {
+      background: rgba(0,0,0,.45);
+      box-shadow: none;
+    }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+      .timer-card { min-height: auto; }
+      .settings-grid, .round-info { grid-template-columns: 1fr 1fr; }
+      .corners { grid-template-columns: 1fr; }
+      .vs { display: none; }
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 10px; }
+      .timer-card, .settings-card, .history-card { padding: 16px; border-radius: 20px; }
+      .settings-grid, .round-info, .preset-row, .button-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+  <main class="app">
+    <section class="timer-card state-prep" id="timerCard">
+      <div>
+        <div class="sponsor-strip" id="sponsorStrip">Main Sponsor</div>
+        <h1 id="eventTitle">Fight Night</h1>
+        <div class="subtitle" id="boutTitle">Main Event</div>
 
-<div class="app">
+        <div class="corners">
+          <div class="corner red-corner">
+            <div class="corner-label">Red Corner</div>
+            <div class="fighter-name" id="redNameDisplay">Red Fighter</div>
+          </div>
+          <div class="vs">VS</div>
+          <div class="corner blue-corner">
+            <div class="corner-label">Blue Corner</div>
+            <div class="fighter-name" id="blueNameDisplay">Blue Fighter</div>
+          </div>
+        </div>
 
-  <div class="card">
+        <div class="status" id="statusText">Ready</div>
+        <div class="time" id="timeDisplay">00:10</div>
 
-    <h1 id="eventTitle">Fight Night</h1>
-    <h2 id="boutTitle">Main Event</h2>
+        <div class="round-info">
+          <div class="info-box">
+            <div class="info-label">Round</div>
+            <div class="info-value"><span id="currentRound">1</span>/<span id="totalRoundsDisplay">12</span></div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">Next</div>
+            <div class="info-value" id="nextPhase">Round 1</div>
+          </div>
+          <div class="info-box mode-box">
+            <div class="info-label">Mode</div>
+            <div class="info-value" id="modeDisplay">Stopped</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">Clock</div>
+            <div class="info-value" id="clockDisplay">--:--</div>
+          </div>
+        </div>
+      </div>
 
-    <div class="fighter" id="redDisplay">
-      RED CORNER
-    </div>
+        <div class="bottom-media" id="bottomMedia"></div>
+      </div>
 
-    <div class="fighter" id="blueDisplay">
-      BLUE CORNER
-    </div>
+      <div class="controls">
+        <button class="secondary" id="scoreWindowBtn">Open Scoring Window</button>
+        <button class="start" id="startBtn">Start</button>
+        <button class="pause" id="pauseBtn">Pause</button>
+        <button class="secondary" id="skipBtn">Skip Phase</button>
+        <button class="reset" id="resetBtn">Reset</button>
+        <button class="secondary" id="displayBtn">Display Mode</button>
+        <button class="secondary" id="outputBtn">Open Output Window</button>
+        <button class="secondary" id="overlayBtn">OBS Overlay</button>
+        <button class="secondary" id="fullscreenBtn">Fullscreen</button>
+      </div>
+    </section>
 
-    <div class="time" id="timeDisplay">
-      03:00
-    </div>
-        <h2 id="statusDisplay">Ready</h2>
+    <aside class="side-column">
+      <section class="settings-card">
+        <h2>Event Settings</h2>
 
-    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
-      <button class="start" id="startBtn">Start</button>
-      <button class="pause" id="pauseBtn">Pause</button>
-      <button class="reset" id="resetBtn">Reset</button>
-    </div>
+        <div class="preset-row">
+          <button data-preset="pro">Pro</button>
+          <button data-preset="amateur">Amateur</button>
+          <button data-preset="training">Training</button>
+        </div>
 
-    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:10px;">
-      <button class="secondary" id="skipBtn">Skip Phase</button>
-      <button class="secondary" id="outputBtn">Open Output Window</button>
-      <button class="secondary" id="scoreBtn">Open Scoring Window</button>
-    </div>
+        <div class="settings-grid">
+          <div class="field-full">
+            <label for="titleInput">Event title</label>
+            <input id="titleInput" value="Fight Night" />
+          </div>
 
-  </div>
+          <div class="field-full">
+            <label for="boutInput">Bout title / division</label>
+            <input id="boutInput" value="Main Event" />
+          </div>
 
-  <div class="card">
+          <div>
+            <label for="redInput">Red corner</label>
+            <input id="redInput" value="Red Fighter" />
+          </div>
 
-    <h2>Event Settings</h2>
+          <div>
+            <label for="blueInput">Blue corner</label>
+            <input id="blueInput" value="Blue Fighter" />
+          </div>
 
-    <label>Event Title</label>
-    <input id="eventTitleInput" value="Fight Night">
+          <div class="field-full">
+            <label for="sponsorInput">Sponsor text</label>
+            <input id="sponsorInput" value="Main Sponsor" />
+          </div>
 
-    <label>Bout Title</label>
-    <input id="boutTitleInput" value="Main Event">
+          <div class="field-full">
+            <label for="logoInput">Sponsor logo</label>
+            <input id="logoInput" type="file" accept="image/*" />
+          </div>
 
-    <label>Red Corner Fighter</label>
-    <input id="redInput" value="Red Fighter">
+          <div>
+            <label for="roundsInput">Rounds</label>
+            <input id="roundsInput" type="number" min="1" max="50" value="12" />
+          </div>
 
-    <label>Blue Corner Fighter</label>
-    <input id="blueInput" value="Blue Fighter">
+          <div>
+            <label for="roundTimeInput">Round length</label>
+            <input id="roundTimeInput" type="text" value="3:00" />
+          </div>
 
-    <label>Number of Rounds</label>
-    <input id="roundsInput" type="number" value="12">
+          <div>
+            <label for="restTimeInput">Rest length</label>
+            <input id="restTimeInput" type="text" value="1:00" />
+          </div>
 
-    <label>Round Time</label>
-    <input id="roundTimeInput" value="3:00">
+          <div>
+            <label for="prepTimeInput">Prep countdown</label>
+            <input id="prepTimeInput" type="text" value="0:10" />
+          </div>
 
-    <label>Rest Time</label>
-    <input id="restTimeInput" value="1:00">
+          <div>
+            <label for="warningInput">Warning sound</label>
+            <input id="warningInput" type="text" value="0:10" />
+          </div>
 
-    <label>Prep Time</label>
-    <input id="prepTimeInput" value="0:10">
+          <div>
+            <label for="volumeInput">Volume</label>
+            <input id="volumeInput" type="range" min="0" max="1" step="0.01" value="0.9" />
+          </div>
+        </div>
 
-    <label>
-      <input id="usePrepInput" type="checkbox" checked style="width:auto;">
-      Use Prep Countdown
-    </label>
+        <label class="checkbox-row">
+          <input id="usePrep" type="checkbox" checked />
+          Use prep countdown
+        </label>
 
-    <label>
-      <input id="useRestInput" type="checkbox" checked style="width:auto;">
-      Use Rest Between Rounds
-    </label>
+        <label class="checkbox-row">
+          <input id="useRest" type="checkbox" checked />
+          Use rest between rounds
+        </label>
 
-    <label>
-      <input id="autoContinueInput" type="checkbox" checked style="width:auto;">
-      Automatically Continue Between Rounds
-    </label>
-        <h2 style="margin-top:30px;">Walkout Music</h2>
+        <label class="checkbox-row">
+          <input id="autoStartRounds" type="checkbox" checked />
+          Automatically continue between rounds
+        </label>
 
-    <label>Red Corner Local Audio</label>
-    <input id="redAudioInput" type="file" accept="audio/*">
+        <label class="checkbox-row">
+          <input id="showCorners" type="checkbox" checked />
+          Show fighter names / corners
+        </label>
 
-    <label>Red Spotify Track Link</label>
-    <input
-      id="redSpotifyInput"
-      placeholder="https://open.spotify.com/track/..."
-    >
+        <div class="button-row">
+          <button class="orange" id="testStartBellBtn">Test Start Bell</button>
+          <button class="orange" id="testEndBellBtn">Test End Bell</button>
+        </div>
 
-    <label>Red Start Time</label>
-    <input id="redStartInput" value="0:00">
+        <p class="note">
+          Audio files should sit beside this HTML file and be named <strong>bell 1.wav</strong> and <strong>bell 3.wav</strong>. Bell 1 plays at the start of each round. Bell 3 plays at the end of each round and at the end of the fight.
+        </p>
+      </section>
 
-    <button class="start" id="playRedBtn">
-      Play Red Walkout
-    </button>
+      <section class="fight-list-card history-card">
+        <h2>Prepared Fights</h2>
+        <div class="button-row">
+          <button class="start" id="saveFightBtn">Save Current Fight</button>
+          <button class="secondary" id="clearFightsBtn">Clear List</button>
+          <button class="orange" id="nextFightBtn">Load Next Fight</button>
+        </div>
+        <div class="fight-list" id="fightList"></div>
+        <p class="note">
+          Prepare each bout in the settings above, then save it here. Fights will auto-load in sequence after completion. Use the scoring window for judges and stream graphics in the output display.
+        </p>
+      </section>
 
-    <button class="orange" id="fadeRedBtn">
-      Fade Red Walkout
-    </button>
+      <section class="history-card">
+        <h2>Round History</h2>
+        <div class="history-list" id="historyList"></div>
+        <p class="note">
+          OBS Overlay mode uses a transparent page background for streaming and event projection.
+        </p>
+      </section>
+    </aside>
+  </main>
 
-    <label style="margin-top:20px;">Blue Corner Local Audio</label>
-    <input id="blueAudioInput" type="file" accept="audio/*">
+  <audio id="startBell" src="bell 1.wav" preload="auto"></audio>
+  <audio id="endBell" src="bell 3.wav" preload="auto"></audio>
 
-    <label>Blue Spotify Track Link</label>
-    <input
-      id="blueSpotifyInput"
-      placeholder="https://open.spotify.com/track/..."
-    >
+  <script>
+    const $ = (id) => document.getElementById(id);
 
-    <label>Blue Start Time</label>
-    <input id="blueStartInput" value="0:00">
+    const params = new URLSearchParams(window.location.search);
+    const isOutputWindow = params.get('output') === '1';
+    const isScoreWindow = params.get('scores') === '1';
 
-    <button class="start" id="playBlueBtn">
-      Play Blue Walkout
-    </button>
+    const state = {
+      running: false,
+      phase: 'prep',
+      round: 1,
+      timeLeft: 10,
+      interval: null,
+      warningPlayed: false,
+      history: [],
+      fights: JSON.parse(localStorage.getItem('boxingPreparedFights') || '[]'),
+      audioCtx: null,
+      logoUrl: null
+    };
 
-    <button class="orange" id="fadeBlueBtn">
-      Fade Blue Walkout
-    </button>
+    const inputs = {
+      title: $('titleInput'),
+      bout: $('boutInput'),
+      red: $('redInput'),
+      blue: $('blueInput'),
+      sponsor: $('sponsorInput'),
+      logo: $('logoInput'),
+      rounds: $('roundsInput'),
+      roundTime: $('roundTimeInput'),
+      restTime: $('restTimeInput'),
+      prepTime: $('prepTimeInput'),
+            warning: $('warningInput'),
+      volume: $('volumeInput'),
+      usePrep: $('usePrep'),
+      useRest: $('useRest'),
+      autoStartRounds: $('autoStartRounds'),
+      showCorners: $('showCorners')
+    };
 
-    <button
-      class="reset"
-      id="stopMusicBtn"
-      style="margin-top:20px;"
-    >
-      Emergency Stop Music
-    </button>
-
-    <h2 style="margin-top:30px;">
-      Spotify Professional Control
-    </h2>
-
-    <label>Spotify Client ID</label>
-    <input
-      id="spotifyClientIdInput"
-      placeholder="Spotify Developer Client ID"
-    >
-
-    <label>Redirect URI</label>
-    <input
-      id="spotifyRedirectInput"
-      placeholder="http://127.0.0.1:5500/index.html"
-    >
-
-    <button class="start" id="connectSpotifyBtn">
-      Connect Spotify
-    </button>
-
-    <button class="secondary" id="disconnectSpotifyBtn">
-      Disconnect Spotify
-    </button>
-
-    <p id="spotifyStatus">
-      Spotify not connected
-    </p>
-
-  </div>
-</div>
-<audio id="startBell" src="bell 1.wav" preload="auto"></audio>
-<audio id="endBell" src="bell 3.wav" preload="auto"></audio>
-<audio id="redWalkoutAudio" preload="auto"></audio>
-<audio id="blueWalkoutAudio" preload="auto"></audio>
-
-<script>
-const $ = (id) => document.getElementById(id);
-
-const state = {
-  running: false,
-  phase: "prep",
-  round: 1,
-  timeLeft: 10,
-  timer: null,
-
-  spotifyAccessToken: null,
-  spotifyDeviceId: null,
-  spotifyPlayer: null,
-
-  activeMusic: null,
-  fadeInterval: null,
-
-  redAudioUrl: null,
-  blueAudioUrl: null
-};
-
-function parseTime(value) {
-  const raw = String(value).trim();
-
-  if (!raw) return 0;
-
-  if (raw.includes(":")) {
-    const parts = raw.split(":").map(Number);
-
-    if (parts.length === 2) {
-      return (parts[0] * 60) + parts[1];
+    function parseTime(value) {
+      const raw = String(value).trim();
+      if (!raw) return 0;
+      if (raw.includes(':')) {
+        const parts = raw.split(':').map(Number);
+        if (parts.length === 3) return Math.max(0, (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0));
+        return Math.max(0, (parts[0] || 0) * 60 + (parts[1] || 0));
+      }
+      const num = Number(raw);
+      if (Number.isNaN(num)) return 0;
+      return num < 20 ? num * 60 : num;
     }
 
-    if (parts.length === 3) {
-      return (
-        (parts[0] * 3600) +
-        (parts[1] * 60) +
-        parts[2]
-      );
-    }
-  }
-
-  return Number(raw) || 0;
-}
-
-function formatTime(seconds) {
-  seconds = Math.max(0, Math.ceil(seconds));
-
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function render() {
-  $("eventTitle").textContent =
-    $("eventTitleInput").value || "Fight Night";
-
-  $("boutTitle").textContent =
-    $("boutTitleInput").value || "Main Event";
-
-  $("redDisplay").textContent =
-    $("redInput").value || "Red Fighter";
-
-  $("blueDisplay").textContent =
-    $("blueInput").value || "Blue Fighter";
-
-  $("timeDisplay").textContent =
-    formatTime(state.timeLeft);
-
-  $("statusDisplay").textContent =
-    state.running
-      ? `Round ${state.round}`
-      : "Stopped";
-}
-  function playStartBell() {
-  const bell = $("startBell");
-  bell.currentTime = 0;
-  bell.play().catch(() => {});
-}
-
-function playEndBell() {
-  const bell = $("endBell");
-  bell.currentTime = 0;
-  bell.play().catch(() => {});
-}
-
-function resetTimer() {
-  clearInterval(state.timer);
-
-  state.running = false;
-  state.round = 1;
-
-  if (
-    $("usePrepInput").checked &&
-    parseTime($("prepTimeInput").value) > 0
-  ) {
-    state.phase = "prep";
-    state.timeLeft =
-      parseTime($("prepTimeInput").value);
-  } else {
-    state.phase = "round";
-    state.timeLeft =
-      parseTime($("roundTimeInput").value);
-  }
-
-  render();
-}
-
-function startTimer() {
-  if (state.running) return;
-
-  if (
-    state.phase === "round" &&
-    state.timeLeft ===
-      parseTime($("roundTimeInput").value)
-  ) {
-    playStartBell();
-  }
-
-  state.running = true;
-  render();
-
-  state.timer = setInterval(() => {
-    state.timeLeft--;
-
-    if (state.timeLeft <= 0) {
-      nextPhase(true);
+    function formatTime(seconds) {
+      seconds = Math.max(0, Math.ceil(seconds));
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
-    render();
-  }, 1000);
-}
-
-function pauseTimer() {
-  state.running = false;
-  clearInterval(state.timer);
-  render();
-}
-
-function nextPhase(fromTimer = false) {
-  const totalRounds =
-    Number($("roundsInput").value) || 12;
-
-  if (state.phase === "prep") {
-    state.phase = "round";
-    state.timeLeft =
-      parseTime($("roundTimeInput").value);
-
-    playStartBell();
-    render();
-    return;
-  }
-
-  if (state.phase === "round") {
-    playEndBell();
-
-    if (state.round >= totalRounds) {
-      pauseTimer();
-      $("statusDisplay").textContent =
-        "Fight Complete";
-      return;
+    function settings() {
+      return {
+        title: inputs.title.value || 'Fight Night',
+        bout: inputs.bout.value || 'Main Event',
+        red: inputs.red.value || 'Red Fighter',
+        blue: inputs.blue.value || 'Blue Fighter',
+        sponsor: inputs.sponsor.value || '',
+        rounds: Math.max(1, Number(inputs.rounds.value) || 1),
+        roundTime: parseTime(inputs.roundTime.value),
+        restTime: parseTime(inputs.restTime.value),
+        prepTime: parseTime(inputs.prepTime.value),
+                warning: parseTime(inputs.warning.value),
+        volume: Number(inputs.volume.value),
+        usePrep: inputs.usePrep.checked,
+        useRest: inputs.useRest.checked,
+        autoStartRounds: inputs.autoStartRounds.checked,
+        showCorners: inputs.showCorners.checked
+      };
     }
 
-    if (
-      $("useRestInput").checked &&
-      parseTime($("restTimeInput").value) > 0
-    ) {
-      state.phase = "rest";
-      state.timeLeft =
-        parseTime($("restTimeInput").value);
-    } else {
-      state.round++;
-      state.phase = "round";
-      state.timeLeft =
-        parseTime($("roundTimeInput").value);
-      playStartBell();
+    function ensureAudio() {
+      if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
     }
 
-    render();
-    return;
-  }
-
-  if (state.phase === "rest") {
-    state.round++;
-    state.phase = "round";
-    state.timeLeft =
-      parseTime($("roundTimeInput").value);
-
-    if (
-      !$("autoContinueInput").checked &&
-      fromTimer
-    ) {
-      pauseTimer();
-    } else {
-      playStartBell();
+    function userTriggeredClickOnly(event) {
+      if (!event || !event.isTrusted) return false;
+      const active = document.activeElement;
+      if (active && active.tagName === 'INPUT') return false;
+      return true;
     }
 
-    render();
-  }
-}
-  function setWalkoutFile(corner, file) {
-  if (!file) return;
-
-  const audioId =
-    corner === "red"
-      ? "redWalkoutAudio"
-      : "blueWalkoutAudio";
-
-  const stateKey =
-    corner === "red"
-      ? "redAudioUrl"
-      : "blueAudioUrl";
-
-  if (state[stateKey]) {
-    URL.revokeObjectURL(state[stateKey]);
-  }
-
-  state[stateKey] =
-    URL.createObjectURL(file);
-
-  $(audioId).src =
-    state[stateKey];
-}
-
-function stopAllMusic() {
-  clearInterval(state.fadeInterval);
-
-  ["redWalkoutAudio", "blueWalkoutAudio"]
-    .forEach(id => {
+    function playAudioElement(id) {
+      ensureAudio();
       const audio = $(id);
-      audio.pause();
+      audio.volume = settings().volume;
       audio.currentTime = 0;
-      audio.volume = 1;
-    });
-
-  state.activeMusic = null;
-}
-
-function fadeWalkout(corner) {
-  const audio =
-    corner === "red"
-      ? $("redWalkoutAudio")
-      : $("blueWalkoutAudio");
-
-  if (!audio || audio.paused) return;
-
-  clearInterval(state.fadeInterval);
-
-  let step = 0;
-  const steps = 30;
-  const startVolume = audio.volume;
-
-  state.fadeInterval = setInterval(() => {
-    step++;
-
-    audio.volume =
-      Math.max(
-        0,
-        startVolume * (1 - step / steps)
-      );
-
-    if (step >= steps) {
-      clearInterval(state.fadeInterval);
-      audio.pause();
-      audio.currentTime = 0;
-      audio.volume = 1;
+      return audio.play().catch(() => false);
     }
-  }, 100);
-}
 
-function playLocalWalkout(corner) {
-  const audio =
-    corner === "red"
-      ? $("redWalkoutAudio")
-      : $("blueWalkoutAudio");
-
-  const start =
-    corner === "red"
-      ? parseTime($("redStartInput").value)
-      : parseTime($("blueStartInput").value);
-
-  if (!audio.src) return false;
-
-  stopAllMusic();
-
-  audio.currentTime = start;
-  audio.volume = 1;
-  audio.play().catch(() => {});
-
-  state.activeMusic = audio;
-
-  return true;
-}
-  function getSpotifyTrackUri(link) {
-  if (!link) return null;
-
-  if (link.startsWith("spotify:track:")) {
-    return link;
-  }
-
-  if (link.includes("open.spotify.com/track/")) {
-    const parts = link.split("/track/")[1];
-    if (!parts) return null;
-
-    const id = parts.split("?")[0];
-    return `spotify:track:${id}`;
-  }
-
-  return null;
-}
-
-function saveSpotifySettings() {
-  localStorage.setItem(
-    "spotifyClientId",
-    $("spotifyClientIdInput").value
-  );
-
-  localStorage.setItem(
-    "spotifyRedirectUri",
-    $("spotifyRedirectInput").value
-  );
-}
-
-function loadSpotifySettings() {
-  $("spotifyClientIdInput").value =
-    localStorage.getItem("spotifyClientId") || "";
-
-  $("spotifyRedirectInput").value =
-    localStorage.getItem("spotifyRedirectUri") || "";
-}
-
-function connectSpotify() {
-  const clientId =
-    $("spotifyClientIdInput").value.trim();
-
-  const redirectUri =
-    $("spotifyRedirectInput").value.trim();
-
-  if (!clientId || !redirectUri) {
-    $("spotifyStatus").textContent =
-      "Enter Client ID + Redirect URI first";
-    return;
-  }
-
-  saveSpotifySettings();
-
-  const scope =
-    "streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state";
-
-  const authUrl =
-    `https://accounts.spotify.com/authorize?` +
-    `client_id=${clientId}` +
-    `&response_type=token` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&scope=${encodeURIComponent(scope)}`;
-
-  window.location.href = authUrl;
-}
-
-function readSpotifyTokenFromUrl() {
-  const hash =
-    window.location.hash.substring(1);
-
-  const params =
-    new URLSearchParams(hash);
-
-  const token =
-    params.get("access_token");
-
-  if (token) {
-    state.spotifyAccessToken = token;
-
-    $("spotifyStatus").textContent =
-      "Spotify Connected";
-
-    window.history.replaceState(
-      {},
-      document.title,
-      window.location.pathname
-    );
-
-    initSpotifyPlayer();
-  }
-}
-
-function disconnectSpotify() {
-  state.spotifyAccessToken = null;
-  state.spotifyDeviceId = null;
-  state.spotifyPlayer = null;
-
-  $("spotifyStatus").textContent =
-    "Spotify disconnected";
-}
-  function initSpotifyPlayer() {
-  if (!state.spotifyAccessToken) return;
-
-  window.onSpotifyWebPlaybackSDKReady = () => {
-    const player = new Spotify.Player({
-      name: "Boxing Event Controller",
-      getOAuthToken: cb => {
-        cb(state.spotifyAccessToken);
-      },
-      volume: 0.9
-    });
-
-    player.addListener(
-      "ready",
-      ({ device_id }) => {
-        state.spotifyDeviceId = device_id;
-
-        $("spotifyStatus").textContent =
-          "Spotify Device Ready";
-
-        console.log(
-          "Spotify device ready:",
-          device_id
-        );
-      }
-    );
-
-    player.addListener(
-      "initialization_error",
-      ({ message }) => {
-        $("spotifyStatus").textContent =
-          "Spotify init error";
-        console.log(message);
-      }
-    );
-
-    player.addListener(
-      "authentication_error",
-      ({ message }) => {
-        $("spotifyStatus").textContent =
-          "Spotify auth error";
-        console.log(message);
-      }
-    );
-
-    player.connect();
-
-    state.spotifyPlayer = player;
-  };
-
-  if (window.Spotify) {
-    window.onSpotifyWebPlaybackSDKReady();
-  }
-}
-
-async function playSpotifyTrack(
-  spotifyLink,
-  startTimeSeconds = 0
-) {
-  if (
-    !state.spotifyAccessToken ||
-    !state.spotifyDeviceId
-  ) {
-    $("spotifyStatus").textContent =
-      "Spotify not connected";
-    return false;
-  }
-
-  const uri =
-    getSpotifyTrackUri(spotifyLink);
-
-  if (!uri) {
-    $("spotifyStatus").textContent =
-      "Invalid Spotify track link";
-    return false;
-  }
-
-  await fetch(
-    `https://api.spotify.com/v1/me/player/play?device_id=${state.spotifyDeviceId}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization:
-          `Bearer ${state.spotifyAccessToken}`,
-        "Content-Type":
-          "application/json"
-      },
-      body: JSON.stringify({
-        uris: [uri],
-        position_ms:
-          startTimeSeconds * 1000
-      })
+    function fallbackTone(freq, duration, type = 'sine', delay = 0) {
+      ensureAudio();
+      const ctx = state.audioCtx;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+      gain.gain.linearRampToValueAtTime(settings().volume, ctx.currentTime + delay + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + delay);
+      osc.stop(ctx.currentTime + delay + duration + 0.04);
     }
-  );
 
-  $("spotifyStatus").textContent =
-    "Spotify playback started";
+    function playStartBell() {
+      playAudioElement('startBell').then((played) => {
+        if (played === false) fallbackTone(880, .35, 'sine');
+      });
+    }
 
-  return true;
-}
-  async function playWalkout(corner) {
-  const isRed = corner === "red";
-
-  const localWorked =
-    playLocalWalkout(corner);
-
-  if (localWorked) {
-    return;
-  }
-
-  const spotifyLink =
-    isRed
-      ? $("redSpotifyInput").value.trim()
-      : $("blueSpotifyInput").value.trim();
-
-  const startTime =
-    isRed
-      ? parseTime($("redStartInput").value)
-      : parseTime($("blueStartInput").value);
-
-  if (!spotifyLink) {
-    $("spotifyStatus").textContent =
-      "No local file or Spotify link found";
-    return;
-  }
-
-  await playSpotifyTrack(
-    spotifyLink,
-    startTime
-  );
-}
-
-async function fadeSpotifyOut() {
-  if (!state.spotifyPlayer) return;
-
-  let volume = 0.9;
-
-  clearInterval(state.fadeInterval);
-
-  state.fadeInterval = setInterval(async () => {
-    volume -= 0.03;
-
-    if (volume <= 0) {
-      clearInterval(state.fadeInterval);
-
-      await fetch(
-        "https://api.spotify.com/v1/me/player/pause",
-        {
-          method: "PUT",
-          headers: {
-            Authorization:
-              `Bearer ${state.spotifyAccessToken}`
-          }
+    function playEndBell() {
+      playAudioElement('endBell').then((played) => {
+        if (played === false) {
+          fallbackTone(880, .25, 'triangle', 0);
+          fallbackTone(880, .25, 'triangle', .38);
+          fallbackTone(880, .25, 'triangle', .76);
         }
-      );
-
-      $("spotifyStatus").textContent =
-        "Spotify faded out";
-
-      return;
+      });
     }
 
-    state.spotifyPlayer.setVolume(
-      Math.max(0, volume)
-    );
-
-  }, 100);
-}
-
-function fadeWalkoutSmart(corner) {
-  const localAudio =
-    corner === "red"
-      ? $("redWalkoutAudio")
-      : $("blueWalkoutAudio");
-
-  if (
-    localAudio &&
-    !localAudio.paused &&
-    localAudio.src
-  ) {
-    fadeWalkout(corner);
-    return;
-  }
-
-  fadeSpotifyOut();
-}
-  $("startBtn").addEventListener(
-  "click",
-  startTimer
-);
-
-$("pauseBtn").addEventListener(
-  "click",
-  pauseTimer
-);
-
-$("resetBtn").addEventListener(
-  "click",
-  resetTimer
-);
-
-$("skipBtn").addEventListener(
-  "click",
-  () => nextPhase(false)
-);
-
-$("playRedBtn").addEventListener(
-  "click",
-  () => playWalkout("red")
-);
-
-$("fadeRedBtn").addEventListener(
-  "click",
-  () => fadeWalkoutSmart("red")
-);
-
-$("playBlueBtn").addEventListener(
-  "click",
-  () => playWalkout("blue")
-);
-
-$("fadeBlueBtn").addEventListener(
-  "click",
-  () => fadeWalkoutSmart("blue")
-);
-
-$("stopMusicBtn").addEventListener(
-  "click",
-  stopAllMusic
-);
-
-$("redAudioInput").addEventListener(
-  "change",
-  (e) => {
-    if (e.target.files[0]) {
-      setWalkoutFile(
-        "red",
-        e.target.files[0]
-      );
+    function playWarning() {
+      fallbackTone(660, .12, 'square');
+      fallbackTone(660, .12, 'square', .18);
     }
-  }
-);
 
-$("blueAudioInput").addEventListener(
-  "change",
-  (e) => {
-    if (e.target.files[0]) {
-      setWalkoutFile(
-        "blue",
-        e.target.files[0]
-      );
+    function currentFightData() {
+      const cfg = settings();
+      return {
+        title: cfg.title,
+        bout: cfg.bout,
+        red: cfg.red,
+        blue: cfg.blue,
+        sponsor: cfg.sponsor,
+        rounds: cfg.rounds,
+        roundTime: inputs.roundTime.value,
+        restTime: inputs.restTime.value,
+        prepTime: inputs.prepTime.value,
+                warning: inputs.warning.value,
+        usePrep: cfg.usePrep,
+        useRest: cfg.useRest,
+        autoStartRounds: cfg.autoStartRounds,
+        showCorners: cfg.showCorners
+      };
     }
-  }
-);
 
-$("connectSpotifyBtn").addEventListener(
-  "click",
-  connectSpotify
-);
+    function applyFightData(fight) {
+      pauseTimer();
+      inputs.title.value = fight.title || 'Fight Night';
+      inputs.bout.value = fight.bout || 'Main Event';
+      inputs.red.value = fight.red || 'Red Fighter';
+      inputs.blue.value = fight.blue || 'Blue Fighter';
+      inputs.sponsor.value = fight.sponsor || '';
+      inputs.rounds.value = fight.rounds || 1;
+      inputs.roundTime.value = fight.roundTime || '3:00';
+      inputs.restTime.value = fight.restTime || '1:00';
+      inputs.prepTime.value = fight.prepTime || '0:10';
+            inputs.warning.value = fight.warning || '0:10';
+      inputs.usePrep.checked = fight.usePrep !== false;
+      inputs.useRest.checked = fight.useRest !== false;
+      inputs.autoStartRounds.checked = fight.autoStartRounds !== false;
+      inputs.showCorners.checked = fight.showCorners !== false;
+      resetTimer();
+    }
 
-$("disconnectSpotifyBtn").addEventListener(
-  "click",
-  disconnectSpotify
-);
+    function saveFights() {
+      localStorage.setItem('boxingPreparedFights', JSON.stringify(state.fights));
+      renderFightList();
+    }
 
-$("outputBtn").addEventListener(
-  "click",
-  () => {
-    window.open(
-      window.location.pathname + "?output=1",
-      "_blank"
-    );
-  }
-);
+    function saveCurrentFight() {
+      const fight = currentFightData();
+      fight.id = Date.now();
+      state.fights.push(fight);
+      saveFights();
+    }
 
-$("scoreBtn").addEventListener(
-  "click",
-  () => {
-    window.open(
-      window.location.pathname + "?scores=1",
-      "_blank"
-    );
-  }
-);
+    function deleteFight(id) {
+      state.fights = state.fights.filter(fight => fight.id !== id);
+      saveFights();
+    }
 
-loadSpotifySettings();
-readSpotifyTokenFromUrl();
-resetTimer();
-render();
+    function clearFights() {
+      state.fights = [];
+      saveFights();
+    }
 
-</script>
+    function renderFightList() {
+      const list = $('fightList');
+      if (!state.fights.length) {
+        list.innerHTML = '<div class="fight-item"><div class="fight-meta"><strong>No prepared fights yet</strong><span>Use Save Current Fight to add one.</span></div></div>';
+        return;
+      }
+
+      list.innerHTML = state.fights.map((fight, index) => `
+        <div class="fight-item">
+          <div class="fight-meta">
+            <strong>${index + 1}. ${fight.red || 'Red'} vs ${fight.blue || 'Blue'}</strong>
+            <span>${fight.bout || 'Bout'} · ${fight.rounds || 1} x ${fight.roundTime || '3:00'} · ${fight.useRest === false ? 'No rest' : 'Rest ' + (fight.restTime || '1:00')}</span>
+          </div>
+          <div class="fight-actions">
+            <button class="start" data-load-fight="${fight.id}">Load</button>
+            <button class="reset" data-delete-fight="${fight.id}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('[data-load-fight]').forEach(button => {
+        button.addEventListener('click', () => {
+          const fight = state.fights.find(item => item.id === Number(button.dataset.loadFight));
+          if (fight) applyFightData(fight);
+          button.blur();
+        });
+      });
+
+      list.querySelectorAll('[data-delete-fight]').forEach(button => {
+        button.addEventListener('click', () => {
+          deleteFight(Number(button.dataset.deleteFight));
+          button.blur();
+        });
+      });
+    }
+
+    function addHistory(text) {
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      state.history.unshift({ text, now });
+      state.history = state.history.slice(0, 24);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      $('historyList').innerHTML = state.history.map(item => `
+        <div class="history-item"><span>${item.text}</span><strong>${item.now}</strong></div>
+      `).join('') || '<div class="history-item"><span>No rounds completed yet</span><strong>--</strong></div>';
+    }
+
+    function setPhase(phase, seconds) {
+      state.phase = phase;
+      state.timeLeft = seconds;
+      state.warningPlayed = false;
+      render();
+    }
+
+    function resetTimer() {
+      clearInterval(state.interval);
+      state.running = false;
+      state.round = 1;
+      state.history = [];
+
+      const cfg = settings();
+
+      if (cfg.usePrep && cfg.prepTime > 0) {
+        setPhase('prep', cfg.prepTime);
+      } else {
+        setPhase('round', cfg.roundTime);
+        addHistory(`Round ${state.round} started`);
+      }
+
+      renderHistory();
+    }
+
+    function startTimer() {
+      ensureAudio();
+      if (state.running) return;
+
+      if (
+        state.phase === 'round' &&
+        state.timeLeft === settings().roundTime
+      ) {
+        playStartBell();
+      }
+
+      state.running = true;
+      if (state.timeLeft <= 0) resetTimer();
+      render();
+      state.interval = setInterval(tick, 1000);
+    }
+
+    function pauseTimer() {
+      state.running = false;
+      clearInterval(state.interval);
+      render();
+    }
+
+    function tick() {
+      const cfg = settings();
+      state.timeLeft -= 1;
+
+      if (state.phase === 'round' && cfg.warning > 0 && state.timeLeft === cfg.warning && !state.warningPlayed) {
+        state.warningPlayed = true;
+        playWarning();
+      }
+
+      if (state.timeLeft <= 0) nextPhase(true);
+      render();
+    }
+
+    function loadNextFight() {
+      if (!state.fights.length) return;
+      const current = `${inputs.red.value}|${inputs.blue.value}|${inputs.bout.value}`;
+      let idx = state.fights.findIndex(f => `${f.red}|${f.blue}|${f.bout}` === current);
+      idx = idx < 0 ? 0 : (idx + 1) % state.fights.length;
+      applyFightData(state.fights[idx]);
+      addHistory('Next fight loaded');
+    }
+
+    function nextPhase(fromTimer = false) {
+      const cfg = settings();
+
+      if (state.phase === 'prep') {
+        state.round = 1;
+        setPhase('round', cfg.roundTime);
+        addHistory(`Round ${state.round} started`);
+        playStartBell();
+        return;
+      }
+
+      if (state.phase === 'round') {
+        addHistory(`Round ${state.round} ended`);
+        playEndBell();
+
+        if (state.round >= cfg.rounds) {
+          setPhase('finished', 0);
+          pauseTimer();
+          addHistory('Fight complete');
+          return;
+        }
+
+        if (cfg.useRest && cfg.restTime > 0) {
+          setPhase('rest', cfg.restTime);
+        } else {
+          state.round += 1;
+          setPhase('round', cfg.roundTime);
+          addHistory(`Round ${state.round} started`);
+          playStartBell();
+        }
+        return;
+      }
+
+      if (state.phase === 'rest') {
+        state.round += 1;
+        setPhase('round', cfg.roundTime);
+        addHistory(`Round ${state.round} started`);
+
+        if (!cfg.autoStartRounds && fromTimer) {
+          pauseTimer();
+        } else {
+          playStartBell();
+        }
+
+        return;
+      }
+
+      if (state.phase === 'finished') {
+        loadNextFight();
+        resetTimer();
+        if (state.fights.length) {
+          setTimeout(() => startTimer(), 800);
+        }
+      }
+
+      if (state.phase === 'finished_placeholder') {
+
+        loadNextFight();
+        resetTimer();
+      }
+    }
+
+    function broadcastState() {
+      if (isOutputWindow) return;
+      const payload = {
+        settings: currentFightData(),
+        phase: state.phase,
+        round: state.round,
+        timeLeft: state.timeLeft,
+        running: state.running,
+        logoUrl: state.logoUrl,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('boxingTimerLiveState', JSON.stringify(payload));
+    }
+
+    function applyBroadcastState(payload) {
+      if (!payload || !payload.settings) return;
+      const fight = payload.settings;
+      inputs.title.value = fight.title || 'Fight Night';
+      inputs.bout.value = fight.bout || 'Main Event';
+      inputs.red.value = fight.red || 'Red Fighter';
+      inputs.blue.value = fight.blue || 'Blue Fighter';
+      inputs.sponsor.value = fight.sponsor || '';
+      inputs.rounds.value = fight.rounds || 1;
+      inputs.roundTime.value = fight.roundTime || '3:00';
+      inputs.restTime.value = fight.restTime || '1:00';
+      inputs.prepTime.value = fight.prepTime || '0:10';
+      inputs.warning.value = fight.warning || '0:10';
+      inputs.autoStartRounds.checked = fight.autoStartRounds !== false;
+      inputs.showCorners.checked = fight.showCorners !== false;
+      state.phase = payload.phase || 'prep';
+      state.round = payload.round || 1;
+      state.timeLeft = payload.timeLeft || 0;
+      state.running = !!payload.running;
+      state.logoUrl = payload.logoUrl || null;
+      render();
+    }
+
+    function setupScoreWindow() {
+      if (!isScoreWindow) return;
+      document.body.classList.add('display-mode');
+      document.title = 'Judges Scoring Window';
+      document.querySelector('.controls').style.display = 'none';
+      document.querySelector('.side-column').style.display = 'none';
+      document.getElementById('statusText').textContent = 'Judges View';
+      document.getElementById('nextPhase').textContent = 'Unofficial Scoring';
+    }
+
+    function setupOutputWindow() {
+      if (!isOutputWindow) return;
+      document.body.classList.add('display-mode');
+      document.title = 'Boxing Timer Output';
+      const saved = localStorage.getItem('boxingTimerLiveState');
+      if (saved) applyBroadcastState(JSON.parse(saved));
+      window.addEventListener('storage', (event) => {
+        if (event.key === 'boxingTimerLiveState' && event.newValue) {
+          applyBroadcastState(JSON.parse(event.newValue));
+        }
+      });
+    }
+
+    function render() {
+      const cfg = settings();
+      $('eventTitle').textContent = cfg.title;
+      $('boutTitle').textContent = cfg.bout;
+      $('redNameDisplay').textContent = cfg.red;
+      $('blueNameDisplay').textContent = cfg.blue;
+      $('timeDisplay').textContent = formatTime(state.timeLeft);
+      $('currentRound').textContent = state.round;
+      $('totalRoundsDisplay').textContent = cfg.rounds;
+      $('modeDisplay').textContent = state.running ? 'Running' : 'Stopped';
+      $('clockDisplay').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      document.querySelector('.corners').style.display = cfg.showCorners ? 'grid' : 'none';
+
+      const sponsorRotation = ['Main Sponsor', 'Sponsored By', 'Championship Bout'];
+      const sponsorText = sponsorRotation[Math.floor(Date.now() / 8000) % sponsorRotation.length];
+
+      if (state.logoUrl) {
+        $('sponsorStrip').innerHTML = `<img src="${state.logoUrl}" alt="Sponsor logo">`;
+        $('bottomMedia').innerHTML = `<img src="${state.logoUrl}" alt="Sponsor logo">`;
+      } else {
+        $('sponsorStrip').textContent = cfg.sponsor || sponsorText;
+        $('bottomMedia').textContent = cfg.sponsor || sponsorText;
+      }
+
+      const card = $('timerCard');
+      card.className = 'timer-card';
+
+      let status = 'Ready';
+      let next = 'Round 1';
+
+      if (state.phase === 'prep') {
+        status = 'Get Ready';
+        next = 'Round 1';
+        card.classList.add('state-prep');
+      } else if (state.phase === 'round') {
+        status = `Round ${state.round}`;
+        next = state.round >= cfg.rounds ? 'Finish' : 'Rest';
+        card.classList.add('state-round');
+        if (state.timeLeft <= cfg.warning && cfg.warning > 0) card.classList.add('state-warning');
+      } else if (state.phase === 'rest') {
+        status = 'Rest';
+        next = `Round ${state.round + 1}`;
+        card.classList.add('state-rest');
+      } else if (state.phase === 'finished') {
+        status = 'Fight Complete';
+        next = 'Reset';
+        card.classList.add('state-finished');
+      }
+
+      $('statusText').textContent = status;
+      $('nextPhase').textContent = next;
+      $('startBtn').textContent = state.running ? 'Running' : 'Start';
+      broadcastState();
+    }
+
+    function applyPreset(type) {
+      if (type === 'pro') {
+        inputs.rounds.value = 12;
+        inputs.roundTime.value = '3:00';
+        inputs.restTime.value = '1:00';
+        inputs.prepTime.value = '0:10';
+        inputs.warning.value = '0:10';
+      }
+      if (type === 'amateur') {
+        inputs.rounds.value = 3;
+        inputs.roundTime.value = '3:00';
+        inputs.restTime.value = '1:00';
+        inputs.prepTime.value = '0:10';
+        inputs.warning.value = '0:10';
+      }
+      if (type === 'training') {
+        inputs.rounds.value = 5;
+        inputs.roundTime.value = '2:00';
+        inputs.restTime.value = '1:00';
+        inputs.prepTime.value = '0:05';
+        inputs.warning.value = '0:10';
+      }
+      resetTimer();
+    }
+
+    $('startBtn').addEventListener('click', startTimer);
+    $('pauseBtn').addEventListener('click', pauseTimer);
+    $('resetBtn').addEventListener('click', resetTimer);
+    $('skipBtn').addEventListener('click', () => nextPhase(false));
+    $('testStartBellBtn').addEventListener('click', (event) => {
+      if (!userTriggeredClickOnly(event)) return;
+      playStartBell();
+      $('testStartBellBtn').blur();
+    });
+    $('testEndBellBtn').addEventListener('click', (event) => {
+      if (!userTriggeredClickOnly(event)) return;
+      playEndBell();
+      $('testEndBellBtn').blur();
+    });
+        $('scoreWindowBtn').addEventListener('click', () => {
+      const scoreUrl = `${window.location.pathname}?scores=1`;
+      window.open(scoreUrl, 'boxingScoreWindow');
+      $('scoreWindowBtn').blur();
+    });
+
+    $('nextFightBtn').addEventListener('click', () => {
+      loadNextFight();
+      $('nextFightBtn').blur();
+    });
+    $('saveFightBtn').addEventListener('click', () => {
+      saveCurrentFight();
+      $('saveFightBtn').blur();
+    });
+    $('clearFightsBtn').addEventListener('click', () => {
+      clearFights();
+      $('clearFightsBtn').blur();
+    });
+
+    $('displayBtn').addEventListener('click', () => {
+      document.body.classList.remove('overlay-mode');
+      document.body.classList.toggle('display-mode');
+    });
+
+    $('outputBtn').addEventListener('click', () => {
+      broadcastState();
+      const outputUrl = `${window.location.pathname}?output=1`;
+      window.open(outputUrl, 'boxingTimerOutput');
+      $('outputBtn').blur();
+    });
+
+    $('overlayBtn').addEventListener('click', () => {
+      document.body.classList.remove('display-mode');
+      document.body.classList.toggle('overlay-mode');
+    });
+
+    $('fullscreenBtn').addEventListener('click', async () => {
+      if (!document.fullscreenElement) {
+        try { await document.documentElement.requestFullscreen(); } catch (e) {}
+      } else {
+        try { await document.exitFullscreen(); } catch (e) {}
+      }
+    });
+
+    inputs.logo.addEventListener('change', () => {
+      const file = inputs.logo.files[0];
+      if (!file) return;
+      if (state.logoUrl) URL.revokeObjectURL(state.logoUrl);
+      state.logoUrl = URL.createObjectURL(file);
+      render();
+    });
+
+    document.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyPreset(btn.dataset.preset);
+        btn.blur();
+      });
+    });
+
+    // Prevent keyboard keys like Space/Enter from re-triggering focused buttons.
+    document.querySelectorAll('button').forEach(button => {
+      button.setAttribute('type', 'button');
+      button.addEventListener('click', () => button.blur());
+      button.addEventListener('mousedown', () => button.blur());
+      button.addEventListener('keydown', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      });
+      button.addEventListener('keyup', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      });
+    });
+
+    window.addEventListener('keydown', (event) => {
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (event.code === 'Space' || event.code === 'Enter') {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    });
+
+    Object.values(inputs).forEach(input => {
+      input.addEventListener('input', () => {
+        if (input === inputs.logo) return;
+        if (!state.running) resetTimer();
+        else render();
+      });
+    });
+
+    
+
+    setInterval(() => {
+      render();
+      broadcastState();
+    }, 1000);
+
+    setupScoreWindow();
+    setupOutputWindow();
+
+    if (!isOutputWindow) {
+      renderFightList();
+      resetTimer();
+      broadcastState();
+    } else {
+      renderFightList();
+    }
+  </script>
 </body>
 </html>
